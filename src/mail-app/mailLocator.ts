@@ -63,15 +63,7 @@ import { SearchViewModel } from "./search/view/SearchViewModel.js"
 import { SearchRouter } from "../common/search/view/SearchRouter.js"
 import { MailOpenedListener } from "./mail/view/MailViewModel.js"
 import { getEnabledMailAddressesWithUser } from "../common/mailFunctionality/SharedMailUtils.js"
-import {
-	CLIENT_ONLY_CALENDARS,
-	Const,
-	DEFAULT_CLIENT_ONLY_CALENDAR_COLORS,
-	FeatureType,
-	GroupType,
-	KdfType,
-	MailSetKind,
-} from "../common/api/common/TutanotaConstants.js"
+import { CLIENT_ONLY_CALENDARS, Const, DEFAULT_CLIENT_ONLY_CALENDAR_COLORS, FeatureType, GroupType, KdfType } from "../common/api/common/TutanotaConstants.js"
 import { ShareableGroupType } from "../common/sharing/GroupUtils.js"
 import { ReceivedGroupInvitationsModel } from "../common/sharing/model/ReceivedGroupInvitationsModel.js"
 import { CalendarViewModel } from "../calendar-app/calendar/view/CalendarViewModel.js"
@@ -124,7 +116,6 @@ import { getDisplayedSender } from "../common/api/common/CommonMailUtils.js"
 import { MailModel } from "./mail/model/MailModel.js"
 import { locator } from "../common/api/main/CommonLocator.js"
 import { showSnackBar } from "../common/gui/base/SnackBar.js"
-import { assertSystemFolderOfType } from "./mail/model/MailUtils.js"
 import { WorkerRandomizer } from "../common/api/worker/workerInterfaces.js"
 import { SearchCategoryTypes } from "./search/model/SearchUtils.js"
 import { WorkerInterface } from "./workerUtils/worker/WorkerImpl.js"
@@ -137,7 +128,6 @@ import { lang } from "../common/misc/LanguageViewModel.js"
 import type { CalendarContactPreviewViewModel } from "../calendar-app/calendar/gui/eventpopup/CalendarContactPreviewViewModel.js"
 import { KeyLoaderFacade } from "../common/api/worker/facades/KeyLoaderFacade.js"
 import { ContactSuggestion } from "../common/native/common/generatedipc/ContactSuggestion"
-import { getElementId } from "../common/api/common/utils/EntityUtils.js"
 import { MailImporter } from "./mail/import/MailImporter.js"
 
 assertMainOrNode()
@@ -184,7 +174,6 @@ class MailLocator {
 	searchTextFacade!: SearchTextInAppFacade
 	desktopSettingsFacade!: SettingsFacade
 	desktopSystemFacade!: DesktopSystemFacade
-	mailImporter!: MailImporter
 	webMobileFacade!: WebMobileFacade
 	systemPermissionHandler!: SystemPermissionHandler
 	interWindowEventSender!: InterWindowEventFacadeSendDispatcher
@@ -199,6 +188,7 @@ class MailLocator {
 	Const!: Record<string, any>
 
 	private nativeInterfaces: NativeInterfaces | null = null
+	private mailImporter: MailImporter | null = null
 	private entropyFacade!: EntropyFacade
 	private sqlCipherFacade!: SqlCipherFacade
 
@@ -662,6 +652,14 @@ class MailLocator {
 		return this.nativeInterfaces[name]
 	}
 
+	public getMailImporter(): MailImporter {
+		if (this.mailImporter == null) {
+			throw new ProgrammingError(`Tried to use mail importer in web or mobile`)
+		}
+
+		return this.mailImporter
+	}
+
 	private readonly _workerDeferred: DeferredObject<WorkerClient>
 	private _entropyCollector!: EntropyCollector
 	private _deferredInitialized: DeferredObject<void> = defer()
@@ -801,15 +799,6 @@ class MailLocator {
 
 			this.webMobileFacade = new WebMobileFacade(this.connectivityModel, MAIL_PREFIX)
 
-			this.mailImporter = new MailImporter(
-				this.domainConfigProvider(),
-				this.logins,
-				this.mailboxModel,
-				this.mailModel,
-				this.entityClient,
-				this.eventController,
-			)
-
 			this.nativeInterfaces = createNativeInterfaces(
 				this.webMobileFacade,
 				new WebDesktopFacade(this.logins, async () => this.native),
@@ -842,8 +831,15 @@ class MailLocator {
 				if (isDesktop()) {
 					this.desktopSettingsFacade = desktopInterfaces.desktopSettingsFacade
 					this.desktopSystemFacade = desktopInterfaces.desktopSystemFacade
-					this.mailImporter.nativeMailImportFacade = desktopInterfaces.nativeMailImportFacade
-					this.mailImporter.credentialsProvider = this.credentialsProvider
+					this.mailImporter = new MailImporter(
+						this.domainConfigProvider(),
+						this.logins,
+						this.mailboxModel,
+						this.entityClient,
+						this.eventController,
+						this.credentialsProvider,
+						desktopInterfaces.nativeMailImportFacade,
+					)
 				}
 			} else if (isAndroidApp() || isIOSApp()) {
 				const { SystemPermissionHandler } = await import("../common/native/main/SystemPermissionHandler.js")

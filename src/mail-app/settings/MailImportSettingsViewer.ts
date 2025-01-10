@@ -3,7 +3,7 @@ import m, { Children } from "mithril"
 import { EntityUpdateData } from "../../common/api/common/utils/EntityUpdateUtils"
 import { IconButton, IconButtonAttrs } from "../../common/gui/base/IconButton"
 import { ButtonSize } from "../../common/gui/base/ButtonSize"
-import { assertNotNull } from "@tutao/tutanota-utils"
+import { assertNotNull, lazy } from "@tutao/tutanota-utils"
 import { getFolderName, getIndentedFolderNameForDropdown, getPathToFolderString } from "../mail/model/MailUtils"
 import { HighestTierPlans, MailSetKind, PlanType } from "../../common/api/common/TutanotaConstants"
 import { FolderSystem, IndentedFolder } from "../../common/api/common/mail/FolderSystem"
@@ -22,6 +22,7 @@ import { ColumnWidth, Table, TableLineAttrs } from "../../common/gui/base/Table.
 import { mailLocator } from "../mailLocator.js"
 import { formatDate } from "../../common/misc/Formatter.js"
 import { LoginButton, LoginButtonType } from "../../common/gui/base/buttons/LoginButton"
+import { MailModel } from "../mail/model/MailModel.js"
 
 /**
  * Settings viewer for mail import.
@@ -31,20 +32,15 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 	private selectedTargetFolder: MailFolder | null = null
 	private isImportHistoryExpanded: boolean = true
 
-	private mailImporter: MailImporter
-	private fileApp: NativeFileApp | null
 	private importStatePoolHandle: TimeoutID
 
-	constructor(mailImporter: MailImporter, fileApp: NativeFileApp | null) {
-		this.mailImporter = mailImporter
-		this.fileApp = fileApp
-	}
+	constructor(private readonly mailImporter: lazy<MailImporter>, private readonly fileApp: NativeFileApp | null, private readonly mailModel: MailModel) {}
 
 	async oninit(): Promise<void> {
 		if (isDesktop()) {
-			await this.mailImporter.initImportMailStates()
+			await this.mailImporter().initImportMailStates()
 
-			let mailbox = await this.mailImporter.getMailbox()
+			let mailbox = await this.mailImporter().getMailbox()
 			this.foldersForMailbox = this.getFoldersForMailGroup(assertNotNull(mailbox._ownerGroup))
 			this.selectedTargetFolder = this.foldersForMailbox.getSystemFolderByType(MailSetKind.INBOX)
 		}
@@ -63,8 +59,8 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 			isDesktop()
 				? [
 						this.renderTargetFolderControls(),
-						!this.mailImporter?.shouldRenderImportStatus() ? this.renderStartNewImportControls() : null,
-						this.mailImporter?.shouldRenderImportStatus() ? this.renderImportStatus() : null,
+						!this.mailImporter().shouldRenderImportStatus() ? this.renderStartNewImportControls() : null,
+						this.mailImporter().shouldRenderImportStatus() ? this.renderImportStatus() : null,
 						this.renderImportHistory(),
 				  ]
 				: [this.renderNoImportOnWebText()],
@@ -82,7 +78,7 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 		const allowedExtensions = ["eml", "mbox"]
 		const filePaths = await assertNotNull(this.fileApp).openFileChooser(dom.getBoundingClientRect(), allowedExtensions, true)
 		if (this.selectedTargetFolder) {
-			await this.mailImporter.onStartBtnClick(
+			await this.mailImporter().onStartBtnClick(
 				this.selectedTargetFolder,
 				filePaths.map((fp) => fp.location),
 			)
@@ -136,7 +132,7 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 			return m(DropDownSelector, {
 				label: "mailImportTargetFolder_label",
 				items: targetFolders,
-				disabled: this.mailImporter.shouldRenderImportStatus(),
+				disabled: this.mailImporter().shouldRenderImportStatus(),
 				selectedValue: this.selectedTargetFolder,
 				selectedValueDisplay: this.selectedTargetFolder ? getFolderName(this.selectedTargetFolder) : loadingMsg,
 				selectionChangedHandler: (newFolder: MailFolder | null) => (this.selectedTargetFolder = newFolder),
@@ -169,44 +165,44 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 		const processedMailsCountLabel = m(
 			".flex-start.p.small",
 			lang.get("mailImportStateProcessedMailsTotalMails_label", {
-				"{processedMails}": this.mailImporter.getProcessedMailsCount(),
-				"{totalMails}": this.mailImporter.getTotalMailsCount(),
+				"{processedMails}": this.mailImporter().getProcessedMailsCount(),
+				"{totalMails}": this.mailImporter().getTotalMailsCount(),
 			}),
 		)
 		const resumeMailImportIconButtonAttrs: IconButtonAttrs = {
 			title: "resumeMailImport_action",
 			icon: Icons.Play,
-			click: () => this.mailImporter.onResumeBtnClick(),
+			click: () => this.mailImporter().onResumeBtnClick(),
 			size: ButtonSize.Normal,
-			disabled: this.mailImporter.shouldDisableResumeButton(),
+			disabled: this.mailImporter().shouldDisableResumeButton(),
 		}
 		const pauseMailImportIconButtonAttrs: IconButtonAttrs = {
 			title: "pauseMailImport_action",
 			icon: Icons.Pause,
 			click: () => {
-				this.mailImporter.onPauseBtnClick()
+				this.mailImporter().onPauseBtnClick()
 			},
 			size: ButtonSize.Normal,
-			disabled: this.mailImporter.shouldDisablePauseButton(),
+			disabled: this.mailImporter().shouldDisablePauseButton(),
 		}
 		const cancelMailImportIconButtonAttrs: IconButtonAttrs = {
 			title: "cancelMailImport_action",
 			icon: Icons.Cancel,
 			click: () => {
-				this.mailImporter.onCancelBtnClick()
+				this.mailImporter().onCancelBtnClick()
 			},
 			size: ButtonSize.Normal,
-			disabled: this.mailImporter.shouldDisableCancelButton(),
+			disabled: this.mailImporter().shouldDisableCancelButton(),
 		}
 
 		let buttonControls = []
-		if (this.mailImporter.shouldRenderPauseButton()) {
+		if (this.mailImporter().shouldRenderPauseButton()) {
 			buttonControls.push(m(IconButton, pauseMailImportIconButtonAttrs))
 		}
-		if (this.mailImporter.shouldShowResumeButton()) {
+		if (this.mailImporter().shouldShowResumeButton()) {
 			buttonControls.push(m(IconButton, resumeMailImportIconButtonAttrs))
 		}
-		if (this.mailImporter.shouldRenderCancelButton()) {
+		if (this.mailImporter().shouldRenderCancelButton()) {
 			buttonControls.push(m(IconButton, cancelMailImportIconButtonAttrs))
 		}
 
@@ -214,8 +210,8 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 			[
 				m(
 					".flex-space-between.p.small.mt-m",
-					getReadableUiImportStatus(this.mailImporter.getUiStatus()),
-					this.mailImporter.shouldRenderProcessedMails() ? processedMailsCountLabel : null,
+					getReadableUiImportStatus(this.mailImporter().getUiStatus()),
+					this.mailImporter().shouldRenderProcessedMails() ? processedMailsCountLabel : null,
 				),
 			],
 			[m(".flex-space-between.border-radius-big.mt-s.rel.nav-bg.full-width", this.renderMailImportProgressBar(), ...buttonControls)],
@@ -227,7 +223,7 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 		return m(
 			".rel.border-radius-big.full-width",
 			m(ProgressBar, {
-				progress: this.mailImporter.getProgress() / 100,
+				progress: this.mailImporter().getProgress() / 100,
 				type: ProgressBarType.Large,
 			}),
 		)
@@ -267,7 +263,7 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 	private makeMailImportHistoryTableLines(): Array<TableLineAttrs> {
 		let folders = this.foldersForMailbox?.getIndentedList()
 		if (folders) {
-			return this.mailImporter
+			return this.mailImporter()
 				.getFinalisedImports()
 				.sort(sortCompareByReverseId)
 				.map((im) => {
@@ -301,7 +297,7 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 
 	private getFoldersForMailGroup(mailGroupId: Id): FolderSystem {
 		if (mailGroupId) {
-			const folderSystem = this.mailImporter.mailModel.getFolderSystemByGroupId(mailGroupId)
+			const folderSystem = this.mailModel.getFolderSystemByGroupId(mailGroupId)
 			if (folderSystem) {
 				return folderSystem
 			}

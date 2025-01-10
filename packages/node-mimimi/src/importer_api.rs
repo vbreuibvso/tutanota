@@ -2,6 +2,7 @@ use super::importer::{
 	ImportError, ImportMailStateId, ImportProgressAction, ImportStatus, Importer, IterationError,
 };
 use crate::importer::file_reader::FileImport;
+use log::error;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi::Env;
 use std::future::{Future, IntoFuture};
@@ -28,6 +29,8 @@ pub struct TutaCredentials {
 pub struct ImporterApi {
 	importer: Arc<Importer>,
 	importer_loop_handle: Option<napi::tokio::task::JoinHandle<()>>,
+	on_error_callback:
+		Option<ThreadsafeFunction<String, napi::threadsafe_function::ErrorStrategy::Fatal>>,
 }
 
 #[napi_derive::napi]
@@ -59,6 +62,7 @@ impl ImporterApi {
 				Ok(Some(ImporterApi {
 					importer: Arc::new(importer),
 					importer_loop_handle: None,
+					on_error_callback: None,
 				}))
 			},
 		}
@@ -102,6 +106,7 @@ impl ImporterApi {
 		Ok(ImporterApi {
 			importer: Arc::new(importer),
 			importer_loop_handle: None,
+			on_error_callback: None,
 		})
 	}
 
@@ -148,13 +153,7 @@ impl ImporterApi {
 		&mut self,
 		hook: ThreadsafeFunction<String, napi::threadsafe_function::ErrorStrategy::Fatal>,
 	) -> napi::Result<()> {
-		println!("received hook");
-		let s = hook.call(
-			"someErorr".to_string(),
-			ThreadsafeFunctionCallMode::NonBlocking,
-		);
-		// todo: check call status
-		println!("called hook {:?}", s);
+		self.on_error_callback = Some(hook);
 		Ok(())
 	}
 
@@ -173,12 +172,22 @@ impl ImporterApi {
 impl ImporterApi {
 	fn spawn_importer_task(&mut self) -> napi::tokio::task::JoinHandle<()> {
 		let importer = Arc::clone(&self.importer);
+		let error_handler = self.on_error_callback.clone();
+
 		napi::tokio::task::spawn(async move {
 			let import_res = importer.start_stateful_import().await;
+			if error_handler.is_none() {
+				log::warn!("Started importer loop without a error handler")
+			}
 
-			if let Err(err_to_send_to_js) = import_res {
-			} else {
-				eprintln!(">>>> exit with ok. tokio task complete")
+			if let (Some(error_handler), Err(error_to_send)) = (error_handler, import_res) {
+				let call_status = error_handler.call(
+					String::from(format!("{error_to_send:?}")),
+					ThreadsafeFunctionCallMode::NonBlocking,
+				);
+
+				let error_handler_ok = matches!(call_status, napi::Status::Ok);
+				if !error_handler_ok {}
 			}
 		})
 	}

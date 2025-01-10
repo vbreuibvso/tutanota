@@ -24,19 +24,24 @@ export class DesktopMailImportFacade implements NativeMailImportFacade {
 		unencryptedTutaCredentials: UnencryptedCredentials,
 		apiUrl: string,
 	): Promise<readonly [string, string] | null> {
-		const tutaCredentials = this.createTutaCredentials(unencryptedTutaCredentials, apiUrl)
-		const importerApi = await ImporterApi.getResumableImport(mailboxId, this.configDirectory, targetOwnerGroup, tutaCredentials)
-
-		if (importerApi != null) {
-			importerApi.setErrorHook((err: string) => this.processMimimiMessage(mailboxId, err))
-			console.log("set a hook")
-			this.importerApis.set(mailboxId, importerApi)
-			const { listId, elementId } = importerApi.getImportStateId()
+		const existingImporterApi = this.importerApis.get(mailboxId)
+		if (existingImporterApi) {
+			const { listId, elementId } = existingImporterApi.getImportStateId()
 			return [listId, elementId]
 		} else {
-			this.importerApis.delete(mailboxId)
-			return null
+			const tutaCredentials = this.createTutaCredentials(unencryptedTutaCredentials, apiUrl)
+			const importerApi = await ImporterApi.getResumableImport(mailboxId, this.configDirectory, targetOwnerGroup, tutaCredentials)
+
+			if (importerApi != null) {
+				importerApi.setErrorHook((err: string) => this.processMimimiMessage(mailboxId, err))
+				console.log("set a hook")
+				this.importerApis.set(mailboxId, importerApi)
+				const { listId, elementId } = importerApi.getImportStateId()
+				return [listId, elementId]
+			}
 		}
+
+		return null
 	}
 
 	async prepareNewImport(

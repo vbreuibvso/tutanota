@@ -30,15 +30,6 @@ const DEFAULT_PROGRESS: number = 0
 const PROGRESS_ESTIMATION_MAILS_PER_SECOND_SCALING_RATIO = 0.75
 
 export class MailImporter {
-	public nativeMailImportFacade: NativeMailImportFacade | null = null
-	public credentialsProvider: CredentialsProvider | null = null
-
-	private domainConfigProvider: DomainConfigProvider
-	private loginController: LoginController
-	public mailboxModel: MailboxModel
-	public mailModel: MailModel
-	private entityClient: EntityClient
-
 	private progressMonitor: ProgressMonitor | null = null
 	private progressEstimation: TimeoutID
 	private progress: number = DEFAULT_PROGRESS
@@ -48,27 +39,18 @@ export class MailImporter {
 	private activeImportStartTimestamp: number | null = null
 	private uiStatus: UiImportStatus
 
-	private eventController: EventController
-
 	constructor(
-		domainConfigProvider: DomainConfigProvider,
-		loginController: LoginController,
-		mailboxModel: MailboxModel,
-		mailModel: MailModel,
-		entityClient: EntityClient,
+		private readonly domainConfigProvider: DomainConfigProvider,
+		private readonly loginController: LoginController,
+		private readonly mailboxModel: MailboxModel,
+		private readonly entityClient: EntityClient,
 		eventController: EventController,
+		private readonly credentialsProvider: CredentialsProvider,
+		private readonly nativeMailImportFacade: NativeMailImportFacade,
 	) {
-		this.domainConfigProvider = domainConfigProvider
-		this.loginController = loginController
-		this.mailboxModel = mailboxModel
-		this.mailModel = mailModel
-		this.entityClient = entityClient
-
 		this.uiStatus = UiImportStatus.Idle
 		this.updateProgressMonitorTotalWork(DEFAULT_TOTAL_WORK)
-		this.eventController = eventController
-
-		this.eventController.addEntityListener((updates) => this.entityEventsReceived(updates))
+		eventController.addEntityListener((updates) => this.entityEventsReceived(updates))
 	}
 
 	async getMailbox(): Promise<MailBox> {
@@ -78,7 +60,6 @@ export class MailImporter {
 	async initImportMailStates(): Promise<void> {
 		const importFacade = assertNotNull(this.nativeMailImportFacade)
 		const mailbox = await this.getMailbox()
-		this.listenForError(importFacade, mailbox._id)
 
 		if (this.activeImportId === null) {
 			const mailOwnerGroupId = assertNotNull(mailbox._ownerGroup)
@@ -86,6 +67,8 @@ export class MailImporter {
 			const unencryptedCredentials = assertNotNull(await this.credentialsProvider?.getDecryptedCredentialsByUserId(userId))
 			const apiUrl = getApiBaseUrl(this.domainConfigProvider.getCurrentDomainConfig())
 			this.activeImportId = await importFacade.getResumableImport(mailbox._id, mailOwnerGroupId, unencryptedCredentials, apiUrl)
+
+			this.listenForError(importFacade, mailbox._id)
 		}
 
 		if (this.activeImportId) {
