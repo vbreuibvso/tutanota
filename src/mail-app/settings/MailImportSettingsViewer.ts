@@ -14,7 +14,6 @@ import { elementIdPart, generatedIdToTimestamp, isSameId, sortCompareByReverseId
 import { isDesktop } from "../../common/api/common/Env"
 import { NativeFileApp } from "../../common/native/common/FileApp.js"
 import { Icons } from "../../common/gui/base/icons/Icons.js"
-import { Button, ButtonType } from "../../common/gui/base/Button.js"
 import { DropDownSelector, SelectorItemList } from "../../common/gui/base/DropDownSelector.js"
 import { showNotAvailableForFreeDialog } from "../../common/misc/SubscriptionDialogs.js"
 import { ProgressBar, ProgressBarType } from "../../common/gui/base/ProgressBar.js"
@@ -22,6 +21,7 @@ import { ExpanderButton, ExpanderPanel } from "../../common/gui/base/Expander.js
 import { ColumnWidth, Table, TableLineAttrs } from "../../common/gui/base/Table.js"
 import { mailLocator } from "../mailLocator.js"
 import { formatDate } from "../../common/misc/Formatter.js"
+import { LoginButton, LoginButtonType } from "../../common/gui/base/buttons/LoginButton"
 
 /**
  * Settings viewer for mail import.
@@ -96,24 +96,27 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 	private renderNoImportOnWebText() {
 		return [
 			m(
-				".flex-column.center.mt-m",
-				m("img.onboarding-logo.mt-m", {
-					src: `${window.tutao.appState.prefixWithoutFile}/images/mail-import/tuta-desktop-illustration.webp`,
-					alt: "",
-					rel: "noreferrer",
-					loading: "lazy",
-					decoding: "async",
-					class: "onboarding-logo-large",
-				}),
-				m(".p.mt-m", lang.get("mailImportNoImportOnWeb_label")),
+				".flex-column.mt",
+				m(".p", lang.get("mailImportNoImportOnWeb_label")),
 				m(
-					".flex-center.mt-m",
-					m(Button, {
-						type: ButtonType.Primary,
+					".flex-start.mt-l",
+					m(LoginButton, {
+						type: LoginButtonType.FlexWidth,
 						label: "mailImportDownloadDesktopClient_label",
-						click: () => {
+						onclick: () => {
 							open("https://tuta.com#download")
 						},
+					}),
+				),
+				m(
+					".flex-v-center.full-width.mt-xl",
+					m("img", {
+						src: `${window.tutao.appState.prefixWithoutFile}/images/mail-import/email-import-webapp.svg`,
+						alt: "",
+						rel: "noreferrer",
+						loading: "lazy",
+						decoding: "async",
+						class: "settings-illustration-large",
 					}),
 				),
 			),
@@ -124,6 +127,10 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 		let folders = this.foldersForMailbox
 		if (folders) {
 			const loadingMsg = lang.get("loading_msg")
+			const emptyLabel = m("br")
+			const selectedTargetFolderPath = this.selectedTargetFolder ? getPathToFolderString(folders!, this.selectedTargetFolder) : ""
+			const isNotSubfolder = this.selectedTargetFolder ? selectedTargetFolderPath == getFolderName(this.selectedTargetFolder) : false
+			const helpLabel = this.selectedTargetFolder ? (isNotSubfolder ? emptyLabel : selectedTargetFolderPath) : emptyLabel
 			let targetFolders: SelectorItemList<MailFolder | null> = folders.getIndentedList().map((folderInfo: IndentedFolder) => {
 				return {
 					name: getIndentedFolderNameForDropdown(folderInfo),
@@ -137,7 +144,7 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 				selectedValue: this.selectedTargetFolder,
 				selectedValueDisplay: this.selectedTargetFolder ? getFolderName(this.selectedTargetFolder) : loadingMsg,
 				selectionChangedHandler: (newFolder: MailFolder | null) => (this.selectedTargetFolder = newFolder),
-				helpLabel: () => (this.selectedTargetFolder ? getPathToFolderString(folders!, this.selectedTargetFolder) : ""),
+				helpLabel: () => helpLabel,
 			})
 		} else {
 			return null
@@ -146,31 +153,25 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 
 	private renderStartNewImportControls() {
 		return [
+			m(".flex-start.mt-m", this.renderImportInfoText()),
 			m(
-				".flex-end",
-				m(Button, {
-					type: ButtonType.Secondary,
+				".flex-start.mt-s",
+				m(LoginButton, {
+					type: LoginButtonType.FlexWidth,
 					label: "import_action",
-					click: (_, dom) => this.onImportButtonClick(dom),
+					onclick: (_, dom) => this.onImportButtonClick(dom),
 				}),
 			),
-			m(".flex-end", this.renderImportInfoText()),
 		]
 	}
 
 	private renderImportInfoText() {
-		return [m(".small", "You can import EML or MBOX files.")]
+		return [m(".small", lang.get("mailImportInfoText_label"))]
 	}
 
 	private renderImportStatus() {
-		const importedPercentageLabel = m(
-			".flex-start.p",
-			lang.get("mailImportStateImportedPercentage", {
-				"{importedPercentage}": this.mailImporter.getProgress(),
-			}),
-		)
 		const processedMailsCountLabel = m(
-			".flex-end.mt-s.small",
+			".flex-start.p.small",
 			lang.get("mailImportStateProcessedMailsTotalMails_label", {
 				"{processedMails}": this.mailImporter.getProcessedMailsCount(),
 				"{totalMails}": this.mailImporter.getTotalMailsCount(),
@@ -214,9 +215,14 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 		}
 
 		return [
-			[m(".flex-space-between.h6.mt-s", getReadableUiImportStatus(this.mailImporter.getUiStatus()), importedPercentageLabel)],
+			[
+				m(
+					".flex-space-between.p.small.mt-l",
+					getReadableUiImportStatus(this.mailImporter.getUiStatus()),
+					this.mailImporter.shouldShowProcessedMails() ? processedMailsCountLabel : null,
+				),
+			],
 			[m(".flex-space-between.border-radius-big.mt-s.rel.nav-bg.full-width", this.renderMailImportProgressBar(), ...buttonControls)],
-			this.mailImporter.shouldShowProcessedMails() ? processedMailsCountLabel : null,
 		]
 	}
 

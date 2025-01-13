@@ -976,6 +976,7 @@ export default {
         "mailImportStatusStarting_label": "Starting...",
         "mailImportStatusError_label": "Error",
         "mailImportTargetFolder_label": "Import into folder",
+        "mailImportInfoText_label": "You can import EML and MBOX files.",
         "mailMoved_msg": "This email has been moved to another folder.",
         "mailName_label": "Sender name",
         "mailPartsNotLoaded_msg": "Some parts of the email failed to load due to a lost connection.",
