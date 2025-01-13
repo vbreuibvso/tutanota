@@ -1385,6 +1385,15 @@ impl Entity for ImportMailDataMailReference {
 #[cfg_attr(any(test, feature = "testing"), derive(PartialEq, Debug))]
 pub struct ImportMailGetIn {
 	pub _format: i64,
+	pub newImportedMailSetName: String,
+	#[serde(with = "serde_bytes")]
+	pub ownerEncSessionKey: Vec<u8>,
+	pub ownerGroup: GeneratedId,
+	pub ownerKeyVersion: i64,
+	pub totalMails: i64,
+	pub targetMailFolder: IdTupleGenerated,
+	pub _errors: Option<Errors>,
+	pub _finalIvs: HashMap<String, FinalIv>,
 }
 
 impl Entity for ImportMailGetIn {
@@ -1398,18 +1407,26 @@ impl Entity for ImportMailGetIn {
 
 #[derive(uniffi::Record, Clone, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "testing"), derive(PartialEq, Debug))]
+pub struct ImportMailGetOut {
+	pub _format: i64,
+	pub mailState: IdTupleGenerated,
+}
+
+impl Entity for ImportMailGetOut {
+	fn type_ref() -> TypeRef {
+		TypeRef {
+			app: "tutanota",
+			type_: "ImportMailGetOut",
+		}
+	}
+}
+
+#[derive(uniffi::Record, Clone, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "testing"), derive(PartialEq, Debug))]
 pub struct ImportMailPostIn {
 	pub _format: i64,
-	pub newImportedMailSetName: String,
-	#[serde(with = "serde_bytes")]
-	pub ownerEncSessionKey: Vec<u8>,
-	pub ownerGroup: GeneratedId,
-	pub ownerKeyVersion: i64,
 	pub encImports: Vec<super::sys::StringWrapper>,
 	pub mailState: IdTupleGenerated,
-	pub targetMailFolder: IdTupleGenerated,
-	pub _errors: Option<Errors>,
-	pub _finalIvs: HashMap<String, FinalIv>,
 }
 
 impl Entity for ImportMailPostIn {
@@ -1425,7 +1442,6 @@ impl Entity for ImportMailPostIn {
 #[cfg_attr(any(test, feature = "testing"), derive(PartialEq, Debug))]
 pub struct ImportMailPostOut {
 	pub _format: i64,
-	pub mailState: IdTupleGenerated,
 }
 
 impl Entity for ImportMailPostOut {
@@ -1447,6 +1463,7 @@ pub struct ImportMailState {
 	pub failedMails: i64,
 	pub status: i64,
 	pub successfulMails: i64,
+	pub totalMails: i64,
 	pub importedMails: GeneratedId,
 	pub targetFolder: IdTupleGenerated,
 }

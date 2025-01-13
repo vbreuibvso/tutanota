@@ -1095,8 +1095,29 @@ export function createImportMailGetIn(values: StrippedEntity<ImportMailGetIn>): 
 
 export type ImportMailGetIn = {
 	_type: TypeRef<ImportMailGetIn>;
+	_errors: Object;
 
 	_format: NumberString;
+	newImportedMailSetName: string;
+	ownerEncSessionKey: Uint8Array;
+	ownerGroup: Id;
+	ownerKeyVersion: NumberString;
+	totalMails: NumberString;
+
+	targetMailFolder: IdTuple;
+}
+export const ImportMailGetOutTypeRef: TypeRef<ImportMailGetOut> = new TypeRef("tutanota", "ImportMailGetOut")
+
+export function createImportMailGetOut(values: StrippedEntity<ImportMailGetOut>): ImportMailGetOut {
+	return Object.assign(create(typeModels.ImportMailGetOut, ImportMailGetOutTypeRef), values)
+}
+
+export type ImportMailGetOut = {
+	_type: TypeRef<ImportMailGetOut>;
+
+	_format: NumberString;
+
+	mailState: IdTuple;
 }
 export const ImportMailPostInTypeRef: TypeRef<ImportMailPostIn> = new TypeRef("tutanota", "ImportMailPostIn")
 
@@ -1106,17 +1127,11 @@ export function createImportMailPostIn(values: StrippedEntity<ImportMailPostIn>)
 
 export type ImportMailPostIn = {
 	_type: TypeRef<ImportMailPostIn>;
-	_errors: Object;
 
 	_format: NumberString;
-	newImportedMailSetName: string;
-	ownerEncSessionKey: Uint8Array;
-	ownerGroup: Id;
-	ownerKeyVersion: NumberString;
 
 	encImports: StringWrapper[];
 	mailState: IdTuple;
-	targetMailFolder: IdTuple;
 }
 export const ImportMailPostOutTypeRef: TypeRef<ImportMailPostOut> = new TypeRef("tutanota", "ImportMailPostOut")
 
@@ -1128,8 +1143,6 @@ export type ImportMailPostOut = {
 	_type: TypeRef<ImportMailPostOut>;
 
 	_format: NumberString;
-
-	mailState: IdTuple;
 }
 export const ImportMailStateTypeRef: TypeRef<ImportMailState> = new TypeRef("tutanota", "ImportMailState")
 
@@ -1147,6 +1160,7 @@ export type ImportMailState = {
 	failedMails: NumberString;
 	status: NumberString;
 	successfulMails: NumberString;
+	totalMails: NumberString;
 
 	importedMails: Id;
 	targetFolder: IdTuple;
