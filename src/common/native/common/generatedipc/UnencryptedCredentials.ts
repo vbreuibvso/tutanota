@@ -10,4 +10,5 @@ export interface UnencryptedCredentials {
 	readonly databaseKey: Uint8Array | null
 	readonly encryptedPassword: string
 	readonly encryptedPassphraseKey: Uint8Array | null
+	readonly apiUrl: string
 }

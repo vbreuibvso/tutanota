@@ -1,18 +1,13 @@
 use super::importer::{
 	ImportError, ImportMailStateId, ImportProgressAction, ImportStatus, Importer, IterationError,
-	LocalImportState, ResumableImport, GLOBAL_IMPORTER_STATES,
 };
 use crate::importer::file_reader::FileImport;
-use napi::tokio::sync::Mutex;
-use napi::tokio::sync::MutexGuard;
 use napi::Env;
-use std::collections::HashMap;
-use std::fs;
+use std::future::{Future, IntoFuture};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tutasdk::login::{CredentialType, Credentials};
-use tutasdk::net::native_rest_client::NativeRestClient;
-use tutasdk::{GeneratedId, IdTupleGenerated, LoggedInSdk};
+use tutasdk::{GeneratedId, IdTupleGenerated};
 
 #[napi_derive::napi(object)]
 #[derive(Clone)]
@@ -29,235 +24,120 @@ pub struct TutaCredentials {
 }
 
 #[napi_derive::napi]
-pub struct ImporterApi {}
-
-impl ImporterApi {
-	pub async fn get_running_imports<'a>(
-	) -> MutexGuard<'a, HashMap<String, Arc<Mutex<LocalImportState>>>> {
-		GLOBAL_IMPORTER_STATES
-			.get_or_init(|| Mutex::new(HashMap::new()))
-			.lock()
-			.await
-	}
-
-	pub async fn create_file_importer_inner(
-		logged_in_sdk: Arc<LoggedInSdk>,
-		target_owner_group: String,
-		target_mailset: IdTupleGenerated,
-		source_paths: Vec<PathBuf>,
-		import_directory: PathBuf,
-	) -> napi::Result<Importer> {
-		let target_owner_group = GeneratedId(target_owner_group);
-
-		let source_count = source_paths.len() as i64;
-		let importer = Importer::create_file_importer(
-			logged_in_sdk,
-			target_owner_group,
-			target_mailset,
-			source_paths,
-			import_directory,
-		)
-		.await?;
-
-		importer
-			.update_state(|mut state| state.total_count = source_count)
-			.await;
-
-		Ok(importer)
-	}
-
-	async fn create_sdk(
-		tuta_credentials: TutaCredentials,
-	) -> Result<Arc<LoggedInSdk>, ImportError> {
-		let rest_client = NativeRestClient::try_new().map_err(ImportError::NoNativeRestClient)?;
-		let base_url = tuta_credentials.api_url.clone();
-		let sdk_credentials = tuta_credentials.try_into()?;
-
-		let logged_in_sdk = tutasdk::Sdk::new(base_url, Arc::new(rest_client))
-			.login(sdk_credentials)
-			.await
-			.map_err(ImportError::LoginError)?;
-
-		Ok(logged_in_sdk)
-	}
+pub struct ImporterApi {
+	importer: Arc<Importer>,
+	importer_loop_handle: Option<napi::tokio::task::JoinHandle<()>>,
 }
 
 #[napi_derive::napi]
 impl ImporterApi {
 	#[napi]
-	pub async fn get_import_state(mailbox_id: String) -> napi::Result<Option<LocalImportState>> {
-		let locked_importer_states = Self::get_running_imports().await;
-		match locked_importer_states.get(&mailbox_id) {
-			Some(locked_state) => Ok(Some({
-				let state = locked_state.lock().await.clone();
-				state
-			})),
+	pub async fn get_resumable_import(
+		mailbox_id: String,
+		config_directory: String,
+		target_owner_group: String,
+		tuta_credentials: TutaCredentials,
+	) -> napi::Result<Option<ImporterApi>> {
+		let target_owner_group = GeneratedId(target_owner_group);
+		let import_directory = FileImport::make_import_directory(&config_directory, &mailbox_id);
+		let existing_import = Importer::existing_import(&import_directory)?;
+
+		match existing_import {
 			None => Ok(None),
+
+			Some(saved_id_tuple) => {
+				let importer = Importer::resume_file_importer(
+					&mailbox_id,
+					config_directory,
+					target_owner_group,
+					tuta_credentials,
+					saved_id_tuple,
+				)
+				.await?;
+
+				Ok(Some(ImporterApi {
+					importer: Arc::new(importer),
+					importer_loop_handle: None,
+				}))
+			},
 		}
 	}
 
 	#[napi]
-	pub async fn start_file_import(
+	pub fn get_import_state_id(&self) -> napi::Result<ImportMailStateId> {
+		Ok(self.importer.essentials.remote_state_id.clone().into())
+	}
+
+	#[napi]
+	pub async fn prepare_new_import(
 		mailbox_id: String,
 		tuta_credentials: TutaCredentials,
 		target_owner_group: String,
-		target_mailset_id: (String, String),
+		target_mailset: (String, String),
 		source_paths: Vec<String>,
 		config_directory: String,
-	) -> napi::Result<()> {
-		let logged_in_sdk = ImporterApi::create_sdk(tuta_credentials).await?;
-
-		let mut running_imports = Self::get_running_imports().await;
-		if let Some(import) = running_imports.get_mut(&mailbox_id) {
-			let current_status = import.lock().await.current_status;
-			if current_status != ImportStatus::Running {
-				running_imports.remove(&mailbox_id);
-			} else {
-				Err(ImportError::ImporterAlreadyRunning)?;
-			}
-		}
-
-		let (target_mailset_lid, target_mailset_eid) = target_mailset_id;
+	) -> napi::Result<ImporterApi> {
+		let source_paths = source_paths.into_iter().map(PathBuf::from);
+		let target_owner_group = GeneratedId(target_owner_group);
+		let (target_mailset_lid, target_mailset_eid) = target_mailset;
 		let target_mailset = IdTupleGenerated::new(
 			GeneratedId(target_mailset_lid),
 			GeneratedId(target_mailset_eid),
 		);
-		let import_directory: PathBuf =
-			Importer::get_import_directory(config_directory, &mailbox_id);
-		let source_paths = source_paths.into_iter().map(PathBuf::from).collect();
-		let eml_sources = FileImport::prepare_import(import_directory.clone(), source_paths)
-			.map_err(|e| ImportError::IterationError(IterationError::File(e)))?;
 
-		let inner = Self::create_file_importer_inner(
+		let import_directory =
+			FileImport::prepare_file_import(&config_directory, &mailbox_id, source_paths)
+				.map_err(|e| ImportError::IterationError(IterationError::File(e)))?;
+
+		let logged_in_sdk = Importer::create_sdk(tuta_credentials).await?;
+		let importer = Importer::create_new_file_importer(
 			logged_in_sdk,
 			target_owner_group,
 			target_mailset,
-			eml_sources,
 			import_directory,
 		)
 		.await?;
 
-		running_imports.insert(mailbox_id.clone(), inner.state.clone());
-		drop(running_imports);
-
-		Self::spawn_importer_task(inner);
-		Ok(())
-	}
-
-	fn spawn_importer_task(mut inner: Importer) {
-		napi::tokio::task::spawn(async move {
-			match inner.start_stateful_import().await {
-				Ok(_) => {},
-				Err(e) => {
-					log::error!("Importer task failed: {:?}", e);
-					if let ImportError::NoImportFeature = e {
-						inner
-							.update_state(|mut state| {
-								state.change_status(ImportStatus::ServiceUnavailable)
-							})
-							.await;
-					} else {
-						inner
-							.update_state(|mut state| state.change_status(ImportStatus::Error))
-							.await;
-					};
-				},
-			};
-		});
+		Ok(ImporterApi {
+			importer: Arc::new(importer),
+			importer_loop_handle: None,
+		})
 	}
 
 	#[napi]
-	pub async fn get_resumable_import(
-		config_directory: String,
-		mailbox_id: String,
-	) -> napi::Result<ResumableImport> {
-		Importer::get_resumable_import(config_directory, mailbox_id)
-			.await
-			.map_err(Into::into)
-	}
-
-	#[napi]
-	pub async fn resume_file_import(
-		mailbox_id: String,
-		tuta_credentials: TutaCredentials,
-		mail_state_id: ImportMailStateId,
-		config_directory: String,
+	pub async unsafe fn set_progress_action(
+		&mut self,
+		next_progress_action: ImportProgressAction,
 	) -> napi::Result<()> {
-		let logged_in_sdk = ImporterApi::create_sdk(tuta_credentials).await?;
-		let import_state = Importer::load_import_state(&logged_in_sdk, mail_state_id)
+		self.importer
+			.set_next_progress_action(next_progress_action)
+			.await;
+
+		let previous_loop_handle =
+			std::mem::take(&mut self.importer_loop_handle).ok_or(ImportError::NoRunningImport)?;
+		previous_loop_handle
 			.await
-			.map_err(|e| ImportError::sdk("load_import_state", e))?;
+			.expect("Can not join the task handle");
 
-		let target_mailset = import_state.targetFolder;
-		let target_owner_group = import_state
-			._ownerGroup
-			.expect("import state should have ownerGroup");
-
-		let import_directory = Importer::get_import_directory(config_directory, &mailbox_id);
-
-		let dir_entries = fs::read_dir(&import_directory)?;
-		let mut source_paths: Vec<PathBuf> = vec![];
-		for dir_entry in dir_entries {
-			match dir_entry {
-				Ok(dir_entry) => {
-					source_paths.push(dir_entry.path());
-				},
-				Err(err) => {
-					Err(ImportError::IOError(err))?;
-				},
-			}
-		}
-
-		let inner = Self::create_file_importer_inner(
-			logged_in_sdk,
-			target_owner_group.as_str().to_string(),
-			target_mailset,
-			source_paths,
-			import_directory,
-		)
-		.await?;
-
-		{
-			let mut running_imports = Self::get_running_imports().await;
-			running_imports.insert(mailbox_id.clone(), inner.state.clone());
-		}
-
-		Self::spawn_importer_task(inner);
+		match next_progress_action {
+			ImportProgressAction::Continue => {
+				self.importer
+					.set_remote_import_status(ImportStatus::Running)
+					.await?;
+				self.importer_loop_handle = Some(self.spawn_importer_task());
+			},
+			ImportProgressAction::Pause => {
+				self.importer
+					.set_remote_import_status(ImportStatus::Paused)
+					.await?;
+			},
+			ImportProgressAction::Stop => {
+				self.importer
+					.set_remote_import_status(ImportStatus::Canceled)
+					.await?
+			},
+		};
 		Ok(())
-	}
-
-	#[napi]
-	pub async fn set_progress_action(
-		mailbox_id: String,
-		tuta_credentials: TutaCredentials,
-		import_progress_action: ImportProgressAction,
-		config_directory: String,
-	) -> napi::Result<()> {
-		let mut running_imports = Self::get_running_imports().await;
-		let locked_local_state = running_imports.get_mut(mailbox_id.as_str());
-		let import_directory_path = Importer::get_import_directory(config_directory, &mailbox_id);
-
-		match locked_local_state {
-			Some(local_import_state) => {
-				let mut local_import_state = local_import_state.lock().await;
-				local_import_state.import_progress_action = import_progress_action;
-
-				if local_import_state.current_status != ImportStatus::Running
-					&& import_progress_action == ImportProgressAction::Stop
-				{
-					local_import_state.current_status = ImportStatus::Canceled;
-					Importer::delete_import_dir(&import_directory_path)?;
-					let logged_in_sdk = ImporterApi::create_sdk(tuta_credentials).await?;
-					Importer::mark_remote_final_state(&logged_in_sdk, &local_import_state).await?;
-				};
-				Ok(())
-			},
-
-			None => {
-				Importer::delete_import_dir(&import_directory_path)?;
-				Ok(())
-			},
-		}
 	}
 
 	#[napi]
@@ -269,6 +149,17 @@ impl ImporterApi {
 	#[napi]
 	pub fn deinit_log() {
 		crate::logging::console::Console::deinit();
+	}
+}
+
+impl ImporterApi {
+	fn spawn_importer_task(&mut self) -> napi::tokio::task::JoinHandle<()> {
+		let importer = Arc::clone(&self.importer);
+		napi::tokio::task::spawn(async move {
+			let import_res = importer.start_stateful_import().await;
+
+			if let Err(err_to_send_to_js) = import_res {}
+		})
 	}
 }
 
