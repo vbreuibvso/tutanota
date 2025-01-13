@@ -1,4 +1,10 @@
-import type { CalendarEvent, CalendarEventAttendee, CalendarRepeatRule, EncryptedMailAddress } from "../../../../common/api/entities/tutanota/TypeRefs.js"
+import type {
+	AdvancedRepeatRule,
+	CalendarEvent,
+	CalendarEventAttendee,
+	CalendarRepeatRule,
+	EncryptedMailAddress,
+} from "../../../../common/api/entities/tutanota/TypeRefs.js"
 import { createCalendarEventAttendee, createEncryptedMailAddress } from "../../../../common/api/entities/tutanota/TypeRefs.js"
 import m, { Children, Component, Vnode } from "mithril"
 import { AllIcons, Icon, IconSize } from "../../../../common/gui/base/Icon.js"
@@ -21,6 +27,7 @@ import { ExternalLink } from "../../../../common/gui/base/ExternalLink.js"
 
 import { createRepeatRuleFrequencyValues, formatEventDuration, getDisplayEventTitle, iconForAttendeeStatus } from "../CalendarGuiUtils.js"
 import { hasError } from "../../../../common/api/common/utils/ErrorUtils.js"
+import { ByRule } from "../../../../common/calendar/import/ImportExportUtils.js"
 
 export type EventPreviewViewAttrs = {
 	event: Omit<CalendarEvent, "description">
@@ -229,16 +236,157 @@ export function formatRepetitionFrequency(repeatRule: RepeatRule): string | null
 		const frequency = createRepeatRuleFrequencyValues().find((frequency) => frequency.value === repeatRule.frequency)
 
 		if (frequency) {
-			return frequency.name
+			const freq = frequency.name
+			const readable = buildReadableAdvancedRepetitionRule(repeatRule.advancedRules)
+
+			return (freq + " " + readable).trim()
 		}
 	} else {
-		return lang.get("repetition_msg", {
-			"{interval}": repeatRule.interval,
-			"{timeUnit}": getFrequencyTimeUnit(downcast(repeatRule.frequency)),
-		})
+		return (
+			lang.get("repetition_msg", {
+				"{interval}": repeatRule.interval,
+				"{timeUnit}": getFrequencyTimeUnit(downcast(repeatRule.frequency)),
+			}) +
+			" " +
+			buildReadableAdvancedRepetitionRule(repeatRule.advancedRules)
+		).trim()
 	}
 
 	return null
+}
+
+function buildReadableAdvancedRepetitionRule(advancedRule: AdvancedRepeatRule[]): string {
+	const months: string[] = []
+	const days: string[] = []
+	const monthDays: string[] = []
+	const yearDays: string[] = []
+	const weekNumber: string[] = []
+	const setPos: string[] = []
+
+	advancedRule.forEach((item) => {
+		switch (item.ruleType) {
+			case ByRule.BYMONTH:
+				months.push(item.interval)
+				break
+			case ByRule.BYDAY:
+				days.push(item.interval)
+				break
+			case ByRule.BYMONTHDAY:
+				monthDays.push(item.interval)
+				break
+			case ByRule.BYYEARDAY:
+				yearDays.push(item.interval)
+				break
+			case ByRule.BYWEEKNO:
+				weekNumber.push(item.interval)
+				break
+			case ByRule.BYSETPOS:
+				setPos.push(item.interval)
+				break
+		}
+	})
+
+	const descriptions: string[] = []
+
+	if (months.length > 0) {
+		descriptions.push(
+			lang.get("inMonths_label", {
+				"{months}": joinWithAnd(
+					months.map((month) => parseMonthNumber(month)),
+					", ",
+					lang.get("and_label"),
+				),
+			}),
+		)
+	}
+
+	if (days.length > 0) {
+		if (monthDays.length > 0) {
+			console.log("Month Days: ", monthDays)
+			const partOne = lang
+				.get("nthOf_label", {
+					"{day}": joinWithAnd(monthDays, ", ", lang.get("and_label")),
+					"{period}": months.length > 0 ? lang.get("month_label") : "",
+				})
+				.trim()
+
+			const partTwo = lang.get("onDays_label", {
+				"{days}": joinWithAnd(
+					days.map((day) => parseShortDay(day)),
+					", ",
+					lang.get("and_label"),
+				),
+			})
+
+			descriptions.push(`${partOne} ${partTwo}`.trim())
+		} else if (yearDays.length > 0) {
+			const partOne = lang
+				.get("nthOf_label", {
+					"{day}": joinWithAnd(yearDays, ", ", lang.get("and_label")),
+					"{period}": months.length > 0 ? lang.get("year_label") : "",
+				})
+				.trim()
+
+			const partTwo = lang.get("onDays_label", {
+				"{days}": joinWithAnd(
+					days.map((day) => parseShortDay(day)),
+					", ",
+					lang.get("and_label"),
+				),
+			})
+
+			descriptions.push(`${partOne} ${partTwo}`.trim())
+		} else {
+			descriptions.push(
+				lang.get("onDays_label", {
+					"{days}": joinWithAnd(
+						days.map((day) => parseShortDay(day)),
+						", ",
+						lang.get("and_label"),
+					),
+				}),
+			)
+		}
+	} else if (monthDays.length > 0) {
+		descriptions.push(
+			lang
+				.get("nthOf_label", {
+					"{day}": joinWithAnd(monthDays, ", ", lang.get("and_label")),
+					"{period}": months.length > 0 ? lang.get("month_label") : "",
+				})
+				.trim(),
+		)
+	} else if (yearDays.length > 0) {
+		descriptions.push(
+			lang
+				.get("nthOf_label", {
+					"{day}": joinWithAnd(yearDays, ", ", lang.get("and_label")),
+					"{period}": months.length > 0 ? lang.get("year_label") : "",
+				})
+				.trim(),
+		)
+	}
+
+	if (weekNumber.length > 0) {
+		descriptions.push(lang.get("inWeek_label", { "{weeks}": joinWithAnd(weekNumber, ", ", lang.get("and_label")) }).trim())
+	}
+
+	if (setPos.length > 0) {
+		descriptions.push(lang.get("occurrenceWithinSet_label", { "{occurrences}": joinWithAnd(setPos, ", ", lang.get("and_label")) }))
+	}
+
+	return descriptions.join(" ")
+}
+
+function joinWithAnd(items: any[], separator: string, lastSeparator: string) {
+	if (items.length > 1) {
+		const last = items.pop()
+		const joinedString = items.join(separator)
+
+		return `${joinedString} ${lastSeparator} ${last}`
+	}
+
+	return items.join(separator)
 }
 
 /**
@@ -283,6 +431,58 @@ function getFrequencyTimeUnit(frequency: RepeatPeriod): string {
 
 		default:
 			throw new Error("Unknown calendar event repeat rule frequency: " + frequency)
+	}
+}
+
+function parseShortDay(day: string) {
+	switch (day) {
+		case "MO":
+			return lang.get("monday_label")
+		case "TU":
+			return lang.get("tuesday_label")
+		case "WE":
+			return lang.get("wednesday_label")
+		case "TH":
+			return lang.get("thursday_label")
+		case "FR":
+			return lang.get("friday_label")
+		case "SA":
+			return lang.get("saturday_label")
+		case "SU":
+			return lang.get("sunday_label")
+		default:
+			return ""
+	}
+}
+
+function parseMonthNumber(month: string) {
+	switch (month) {
+		case "1":
+			return lang.get("january_label")
+		case "2":
+			return lang.get("february_label")
+		case "3":
+			return lang.get("march_label")
+		case "4":
+			return lang.get("april_label")
+		case "5":
+			return lang.get("may_label")
+		case "6":
+			return lang.get("june_label")
+		case "7":
+			return lang.get("july_label")
+		case "8":
+			return lang.get("august_label")
+		case "9":
+			return lang.get("september_label")
+		case "10":
+			return lang.get("october_label")
+		case "11":
+			return lang.get("november_label")
+		case "12":
+			return lang.get("december_label")
+		default:
+			return ""
 	}
 }
 
