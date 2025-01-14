@@ -261,6 +261,7 @@ async function createComponents(): Promise<Components> {
 	}
 	const pushFacade = new DesktopNativePushFacade(sse, desktopAlarmScheduler, alarmStorage, sseStorage)
 	const settingsFacade = new DesktopSettingsFacade(conf, desktopUtils, integrator, updater, lang)
+	const desktopImportFacade = new DesktopMailImportFacade(electron.app.getPath("userData"))
 
 	const dispatcherFactory = (window: ApplicationWindow) => {
 		// @ts-ignore
@@ -276,7 +277,7 @@ async function createComponents(): Promise<Components> {
 			new DesktopInterWindowEventFacade(window, wm),
 			nativeCredentialsFacade,
 			desktopCrypto,
-			new DesktopMailImportFacade(window, electron.app.getPath("userData")),
+			desktopImportFacade,
 			pushFacade,
 			new DesktopSearchTextInAppFacade(window),
 			settingsFacade,

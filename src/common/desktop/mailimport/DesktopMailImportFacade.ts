@@ -12,6 +12,10 @@ export class DesktopMailImportFacade implements NativeMailImportFacade {
 		this.configDirectory = configDirectory
 	}
 
+	async deinitLogger() {
+		ImporterApi.deinitLog()
+	}
+
 	async getResumeableImport(
 		mailboxId: string,
 		targetOwnerGroup: string,
@@ -62,10 +66,6 @@ export class DesktopMailImportFacade implements NativeMailImportFacade {
 			throw new Error("no import for this mailbox id running")
 		}
 		await importerApi.setProgressAction(progressAction)
-	}
-
-	async deinitLogger() {
-		ImporterApi.deinitLog()
 	}
 
 	private createTutaCredentials(unencTutaCredentials: UnencryptedCredentials) {

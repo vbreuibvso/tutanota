@@ -43,10 +43,6 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 	async oninit(): Promise<void> {
 		if (isDesktop()) {
 			await this.mailImporter.initImportMailStates()
-			this.importStatePoolHandle = setInterval(async () => {
-				await this.mailImporter.refreshLocalImportState()
-				m.redraw()
-			}, 1000)
 
 			let mailbox = await this.mailImporter.getMailbox()
 			this.foldersForMailbox = this.getFoldersForMailGroup(assertNotNull(mailbox._ownerGroup))
@@ -357,9 +353,5 @@ export function getImportStatusTranslationKey(importStatus: ImportStatus): Trans
 			return "mailImportStatusCanceled_label"
 		case ImportStatus.Finished:
 			return "mailImportStatusFinished_label"
-		case ImportStatus.Error:
-			return "mailImportStatusError_label"
-		case ImportStatus.ServiceUnavailable:
-			return "mailImportStatusError_label"
 	}
 }

@@ -6,15 +6,12 @@ import { CredentialsProvider } from "../../../common/misc/credentials/Credential
 import { DomainConfigProvider } from "../../../common/api/common/DomainConfigProvider"
 import { LoginController } from "../../../common/api/main/LoginController"
 import m from "mithril"
-import { elementIdPart, generatedIdToTimestamp, isSameId } from "../../../common/api/common/utils/EntityUtils.js"
+import { elementIdPart, isSameId } from "../../../common/api/common/utils/EntityUtils.js"
 import { MailboxModel } from "../../../common/mailFunctionality/MailboxModel.js"
 import { MailModel } from "../model/MailModel.js"
 import { EntityClient } from "../../../common/api/common/EntityClient.js"
-import { LocalImportMailState } from "../../../common/native/common/generatedipc/LocalImportMailState.js"
 import { ProgressMonitor } from "../../../common/api/common/utils/ProgressMonitor.js"
 import { ProgrammingError } from "../../../common/api/common/error/ProgrammingError.js"
-import Stream from "mithril/stream"
-import { WsConnectionState } from "../../../common/api/main/WorkerClient.js"
 import { EntityUpdateData, isUpdateForTypeRef } from "../../../common/api/common/utils/EntityUpdateUtils"
 import { EventController } from "../../../common/api/main/EventController"
 
@@ -149,7 +146,9 @@ export class MailImporter {
 		this.stopProgressEstimation()
 		m.redraw()
 
-		await this.setProgressAction(ImportProgressAction.Pause)
+		const mailboxId = (await this.getMailbox())._id
+		const nativeImportFacade = assertNotNull(this.nativeMailImportFacade)
+		await nativeImportFacade.setProgressAction(mailboxId, ImportProgressAction.Pause)
 	}
 
 	async onResumeBtnClick() {
@@ -160,21 +159,9 @@ export class MailImporter {
 		this.startProgressEstimation()
 		m.redraw()
 
-		const importFacade = assertNotNull(this.nativeMailImportFacade)
-		const apiUrl = getApiBaseUrl(this.domainConfigProvider.getCurrentDomainConfig())
-		const userId = this.loginController.getUserController().userId
-
-		const unencryptedCredentials = assertNotNull(await this.credentialsProvider?.getDecryptedCredentialsByUserId(userId))
-		const resumableStateId = assertNotNull(this.activeImportState)
-
-		try {
-			// todo:
-			// call setProgressAction::Continue
-		} catch (e) {
-			this.uiStatus = UiImportStatus.Error
-			console.log("could not resume file import", e)
-			m.redraw()
-		}
+		const mailboxId = (await this.getMailbox())._id
+		const nativeImportFacade = assertNotNull(this.nativeMailImportFacade)
+		await nativeImportFacade.setProgressAction(mailboxId, ImportProgressAction.Continue)
 	}
 
 	async onCancelBtnClick() {
@@ -184,7 +171,9 @@ export class MailImporter {
 		this.stopProgressEstimation()
 		m.redraw()
 
-		await this.setProgressAction(ImportProgressAction.Stop)
+		const mailboxId = (await this.getMailbox())._id
+		const nativeImportFacade = assertNotNull(this.nativeMailImportFacade)
+		await nativeImportFacade.setProgressAction(mailboxId, ImportProgressAction.Stop)
 	}
 
 	shouldShowStartButton() {
@@ -297,23 +286,17 @@ export class MailImporter {
 	}
 
 	async newImportStateFromServer(serverState: ImportMailState) {
-		const wasUpdatedForThisImport = isSameId(this.activeImport?.remoteStateId ?? null, serverState._id)
+		const wasUpdatedForThisImport = isSameId(this.activeImportState ?? null, serverState._id)
 
-		const remoteStatus = parseInt(serverState.status) as ImportStatus
 		if (wasUpdatedForThisImport) {
-			if (remoteStatus == ImportStatus.Paused) {
-				this.activeImport = remoteStateAsLocal(serverState, this.activeImport)
-				this.uiStatus = UiImportStatus.Paused
-				m.redraw()
-				return
-			} else if (isFinalisedImport(remoteStatus)) {
-				this.resetStatus()
-			}
-		}
+			const remoteStatus = parseInt(serverState.status) as ImportStatus
 
-		if (isFinalisedImport(remoteStatus)) {
+			if (isFinalisedImport(remoteStatus)) this.resetStatus()
+			else this.uiStatus = importStatusToUiImportStatus(remoteStatus)
+		} else {
 			this.updateFinalisedImport(elementIdPart(serverState._id), serverState)
 		}
+
 		m.redraw()
 	}
 
@@ -323,26 +306,6 @@ export class MailImporter {
 		this.progress = 0
 		this.stopProgressEstimation()
 		this.uiStatus = UiImportStatus.Idle
-	}
-
-	async connectionStateListener(wsStream: Stream<WsConnectionState>) {
-		wsStream.map(async (wsConnection) => {
-			console.log("Importer says client connection is: " + wsConnection)
-
-			// Importer will never it the loop if the client connection is offline,
-			// as we don't have timeout on `dyn RestClient` yet.
-			// this will put the ui to paused state immediately and
-			// importer to paused state once client is back online ( after it can err/sucess current chunk )
-			const haveImportOngoing = this.shouldShowImportStatus()
-			this.wsConnectionOnline = wsConnection === WsConnectionState.connected
-			if (haveImportOngoing && !this.wsConnectionOnline) {
-				this.stopProgressEstimation()
-				m.redraw()
-			} else if (haveImportOngoing && this.wsConnectionOnline) {
-				await this.setProgressAction(ImportProgressAction.Continue)
-				this.uiStatus = UiImportStatus.Paused
-			}
-		})
 	}
 
 	getProgress() {
@@ -357,20 +320,6 @@ export class MailImporter {
 		}
 	}
 
-	async setProgressAction(progressAction: ImportProgressAction): Promise<void> {
-		const importFacade = assertNotNull(this.nativeMailImportFacade)
-
-		const apiUrl = getApiBaseUrl(this.domainConfigProvider.getCurrentDomainConfig())
-		const userId = this.loginController.getUserController().userId
-		const unencryptedCredentials = assertNotNull(await this.credentialsProvider?.getDecryptedCredentialsByUserId(userId))
-
-		try {
-			await importFacade.setProgressAction((await this.getMailbox())._id, apiUrl, unencryptedCredentials, progressAction)
-		} catch (e) {
-			console.log(`could execute progress action ${progressAction} for file import`, e)
-		}
-	}
-
 	async entityEventsReceived(updates: ReadonlyArray<EntityUpdateData>): Promise<void> {
 		for (const update of updates) {
 			if (isUpdateForTypeRef(ImportMailStateTypeRef, update)) {
@@ -378,17 +327,6 @@ export class MailImporter {
 				await this.newImportStateFromServer(updatedState)
 			}
 		}
-	}
-}
-
-function remoteStateAsLocal(remoteState: ImportMailState, activeImport: LocalImportMailState | null = null): LocalImportMailState {
-	return {
-		failedMails: parseInt(remoteState.failedMails),
-		remoteStateId: remoteState._id,
-		start_timestamp: generatedIdToTimestamp(elementIdPart(remoteState._id)),
-		status: parseInt(remoteState.status),
-		successfulMails: parseInt(remoteState.successfulMails),
-		totalMails: activeImport ? activeImport?.totalMails : DEFAULT_TOTAL_WORK,
 	}
 }
 
