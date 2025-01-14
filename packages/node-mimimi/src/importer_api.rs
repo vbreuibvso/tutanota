@@ -1,6 +1,4 @@
-use super::importer::{
-    ImportError, ImportMailStateId, ImportProgressAction, ImportStatus, Importer, IterationError,
-};
+use super::importer::{ImportMailStateId, ImportProgressAction, ImportStatus, Importer};
 use crate::importer::file_reader::FileImport;
 use log::error;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
@@ -101,8 +99,7 @@ impl ImporterApi {
         );
 
         let import_directory =
-            FileImport::prepare_file_import(&config_directory, &mailbox_id, source_paths)
-                .map_err(|e| ImportError::IterationError(IterationError::File(e)))?;
+			FileImport::prepare_file_import(&config_directory, &mailbox_id, source_paths)?;
 
         let logged_in_sdk = Importer::create_sdk(tuta_credentials).await?;
         let importer = Importer::create_new_file_importer(
@@ -203,7 +200,7 @@ impl ImporterApi {
 }
 
 impl TryFrom<TutaCredentials> for Credentials {
-    type Error = ImportError;
+	type Error = ();
 
     fn try_from(tuta_credentials: TutaCredentials) -> Result<Credentials, Self::Error> {
         // todo: validate!
@@ -219,12 +216,6 @@ impl TryFrom<TutaCredentials> for Credentials {
             encrypted_passphrase_key: tuta_credentials.encrypted_passphrase_key.clone().to_vec(),
             credential_type,
         })
-    }
-}
-
-impl From<ImportError> for napi::Error {
-    fn from(import_err: ImportError) -> Self {
-        napi::Error::from_reason(format!("{:?}", import_err))
     }
 }
 

@@ -4,9 +4,9 @@ use crate::importer::importable_mail::{
 use crate::reduce_to_chunks::{AttachmentUploadData, KeyedImportMailData};
 use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use base64::Engine;
-use file_reader::{FileImport, FileIterationError};
+use file_reader::FileImport;
+use imap_reader::ImapImport;
 use imap_reader::ImapImportConfig;
-use imap_reader::{ImapImport, ImapIterationError};
 use importable_mail::ImportableMail;
 use std::ffi::OsStr;
 use std::fs;
@@ -20,6 +20,9 @@ use tutasdk::crypto::key::{GenericAesKey, VersionedAesKey};
 use tutasdk::crypto::randomizer_facade::RandomizerFacade;
 use tutasdk::entities::generated::sys::{BlobReferenceTokenWrapper, StringWrapper};
 
+use crate::importer::errors::{
+	FileIterationError, ImapIterationError, ImportError, IterationError, PreparationError,
+};
 use crate::importer_api::TutaCredentials;
 use tutasdk::entities::generated::tutanota::{
 	ImportAttachment, ImportMailGetIn, ImportMailPostIn, ImportMailPostOut, ImportMailState,
@@ -33,6 +36,8 @@ use tutasdk::services::ExtraServiceParams;
 use tutasdk::tutanota_constants::ArchiveDataType;
 use tutasdk::{ApiCallError, CustomId, GeneratedId, IdTupleGenerated, LoggedInSdk};
 
+pub mod errors;
+
 pub mod file_reader;
 pub mod imap_reader;
 pub mod importable_mail;
@@ -42,6 +47,8 @@ pub const MAX_REQUEST_SIZE: usize = 1024 * 1024 * 8;
 #[cfg(test)]
 pub const MAX_REQUEST_SIZE: usize = 1024 * 5;
 
+const STATE_ID_FILE_NAME: &str = "import_mail_state";
+
 // We need this type because IdTupleGenerated cannot be converted to a napi value.
 #[cfg_attr(feature = "javascript", napi_derive::napi(object))]
 #[cfg_attr(test, derive(Debug))]
@@ -49,82 +56,6 @@ pub const MAX_REQUEST_SIZE: usize = 1024 * 5;
 pub struct ImportMailStateId {
 	pub list_id: String,
 	pub element_id: String,
-}
-
-#[cfg_attr(feature = "javascript", napi_derive::napi(object))]
-#[cfg_attr(test, derive(Debug))]
-#[derive(Clone, PartialEq)]
-pub struct ResumableImport {
-	pub remote_state_id: ImportMailStateId,
-	pub remaining_eml_count: i64,
-}
-
-impl From<IdTupleGenerated> for ImportMailStateId {
-	fn from(
-		IdTupleGenerated {
-			list_id,
-			element_id,
-		}: IdTupleGenerated,
-	) -> Self {
-		Self {
-			list_id: list_id.to_string(),
-			element_id: element_id.to_string(),
-		}
-	}
-}
-
-impl From<ImportMailStateId> for IdTupleGenerated {
-	fn from(
-		ImportMailStateId {
-			list_id,
-			element_id,
-		}: ImportMailStateId,
-	) -> Self {
-		Self {
-			list_id: GeneratedId::from(list_id),
-			element_id: GeneratedId::from(element_id),
-		}
-	}
-}
-#[derive(Debug)]
-pub enum ImportError {
-	SdkError {
-		// action we were trying to perform on sdk
-		action: &'static str,
-		// actual error sdk returned
-		error: ApiCallError,
-	},
-	/// import feature is not available for this user
-	NoImportFeature,
-	/// Blob responded with empty server url list
-	EmptyBlobServerList,
-	/// the element ID of the current import state directory is missing or not a valid ID
-	LocalImportStateIdInvalid,
-	/// Can not create Native Rest client
-	NoNativeRestClient(std::io::Error),
-	/// Can not create valid credential from given raw input
-	CredentialValidationError(()),
-	/// Error when trying to resume the session passed from client
-	LoginError(tutasdk::login::LoginError),
-	/// Error while iterating through import source
-	IterationError(IterationError),
-	/// Some mail was too big
-	TooBigChunk,
-	/// Different stateId was returned by server for same session of import
-	InconsistentStateId,
-	/// Error that occured when deleting a file
-	FileDeletionError(std::io::Error, PathBuf),
-	IOError(std::io::Error),
-	NoFilesToImport,
-	CannotLoadMailbox,
-	ImporterAlreadyRunning,
-	NoRunningImport,
-}
-
-#[derive(Debug)]
-pub enum IterationError {
-	Imap(ImapIterationError),
-	File(FileIterationError),
 }
 
 #[derive(Clone, PartialEq)]
@@ -233,7 +164,7 @@ impl Iterator for ImportSource {
 }
 
 impl ImportEssential {
-	pub const IMPORT_DISABLED_ERR: ApiCallError = ApiCallError::ServerResponseError {
+	const IMPORT_DISABLED_ERROR: ApiCallError = ApiCallError::ServerResponseError {
 		source: HttpError::PreconditionFailedError(Some(ImportFailure(
 			ImportFailureReason::ImportDisabled,
 		))),
@@ -448,13 +379,7 @@ impl ImportEssential {
 				},
 			)
 			.await
-			.map_err(|e| {
-				if e == Self::IMPORT_DISABLED_ERR {
-					ImportError::NoImportFeature
-				} else {
-					ImportError::sdk("calling ImportMailService", e)
-				}
-			})
+			.map_err(|e| ImportError::sdk("calling ImportMailService", e))
 	}
 
 	pub async fn create_new_server_import_state(
@@ -464,7 +389,7 @@ impl ImportEssential {
 		target_owner_group: GeneratedId,
 		target_mailset: IdTupleGenerated,
 		total_importable_mails: i64,
-	) -> Result<IdTupleGenerated, ImportError> {
+	) -> Result<IdTupleGenerated, PreparationError> {
 		let session_key = GenericAesKey::Aes256(aes::Aes256Key::generate(randomizer_facade));
 		let owner_enc_sk_for_import_state_get =
 			mail_group_key.encrypt_key(&session_key, Iv::generate(randomizer_facade));
@@ -491,11 +416,11 @@ impl ImportEssential {
 			)
 			.await
 			.map_err(|e| {
-				if e == Self::IMPORT_DISABLED_ERR {
-					ImportError::NoImportFeature
-				} else {
-					ImportError::sdk("calling ImportMailService", e)
-				}
+				log::error!("Can not get:: on ImportMailService: {e:?}");
+
+				(e == Self::IMPORT_DISABLED_ERROR)
+					.then_some(PreparationError::NoImportFeature)
+					.unwrap_or(PreparationError::CannotLoadRemoteState)
 			})?;
 
 		Ok(import_get_response.mailState)
@@ -526,14 +451,14 @@ impl Importer {
 		target_owner_group: GeneratedId,
 		target_mailset: IdTupleGenerated,
 		import_directory: PathBuf,
-	) -> Result<Importer, ImportError> {
-		let eml_files_to_import: Vec<PathBuf> =
-			Self::eml_files_in_directory(&import_directory).map_err(ImportError::IOError)?;
+	) -> Result<Importer, PreparationError> {
+		let eml_files_to_import: Vec<PathBuf> = Self::eml_files_in_directory(&import_directory)
+			.map_err(|_| PreparationError::FailedToReadEmls)?;
 		let total_importable_mails = eml_files_to_import.len() as i64;
 
-		let fs_email_client = FileImport::new(eml_files_to_import)
-			.map_err(|e| ImportError::IterationError(IterationError::File(e)))?;
-		let import_source = ImportSource::LocalFile { fs_email_client };
+		let import_source = ImportSource::LocalFile {
+			fs_email_client: FileImport::new(eml_files_to_import),
+		};
 
 		Importer::initialize(
 			logged_in_sdk,
@@ -549,15 +474,24 @@ impl Importer {
 
 	pub(super) async fn create_sdk(
 		tuta_credentials: TutaCredentials,
-	) -> Result<Arc<LoggedInSdk>, ImportError> {
-		let rest_client = NativeRestClient::try_new().map_err(ImportError::NoNativeRestClient)?;
+	) -> Result<Arc<LoggedInSdk>, PreparationError> {
 		let base_url = tuta_credentials.api_url.clone();
-		let sdk_credentials = tuta_credentials.try_into()?;
+		let rest_client = NativeRestClient::try_new().map_err(|e| {
+			log::error!("Can not create new native rest client: {e:?}");
+			PreparationError::NoNativeRestClient
+		})?;
+
+		let sdk_credentials = tuta_credentials
+			.try_into()
+			.map_err(|_validation_error| PreparationError::CredentialValidationError)?;
 
 		let logged_in_sdk = tutasdk::Sdk::new(base_url, Arc::new(rest_client))
 			.login(sdk_credentials)
 			.await
-			.map_err(ImportError::LoginError)?;
+			.map_err(|e| {
+				log::error!("Can not login to sdk: {e:?}");
+				PreparationError::LoginError
+			})?;
 
 		Ok(logged_in_sdk)
 	}
@@ -577,15 +511,15 @@ impl Importer {
 		target_owner_group: GeneratedId,
 		tuta_credentials: TutaCredentials,
 		import_state_id: IdTupleGenerated,
-	) -> Result<Importer, ImportError> {
+	) -> Result<Importer, PreparationError> {
 		let import_directory = FileImport::make_import_directory(&config_directory, mailbox_id);
 
 		let eml_files_to_import = Self::eml_files_in_directory(import_directory.as_path())
-			.map_err(ImportError::IOError)?;
+			.map_err(|_| PreparationError::FailedToReadEmls)?;
 		let total_importable_mails = eml_files_to_import.len() as i64;
-		let fs_email_client = FileImport::new(eml_files_to_import)
-			.map_err(|e| ImportError::IterationError(IterationError::File(e)))?;
-		let import_source = ImportSource::LocalFile { fs_email_client };
+		let import_source = ImportSource::LocalFile {
+			fs_email_client: FileImport::new(eml_files_to_import),
+		};
 
 		let logged_in_sdk = Self::create_sdk(tuta_credentials).await?;
 		let remote_import_state = logged_in_sdk
@@ -593,7 +527,10 @@ impl Importer {
 			.get_crypto_entity_client()
 			.load::<ImportMailState, _>(&import_state_id)
 			.await
-			.map_err(|e| ImportError::sdk("getting remote import state", e))?;
+			.map_err(|e| {
+				log::error!("Can not load remote import state: {e:?}");
+				PreparationError::CannotLoadRemoteState
+			})?;
 
 		let target_mailset = remote_import_state.targetFolder;
 
@@ -618,11 +555,14 @@ impl Importer {
 		import_directory: PathBuf,
 		target_mailset: IdTupleGenerated,
 		total_importable_mails: i64,
-	) -> Result<Importer, ImportError> {
+	) -> Result<Importer, PreparationError> {
 		let mail_group_key = logged_in_sdk
 			.get_current_sym_group_key(&target_owner_group)
 			.await
-			.map_err(|e| ImportError::sdk("getting current_sym_group for imap import", e))?;
+			.map_err(|e| {
+				eprintln!("Can not load mail group key: {e:?}");
+				PreparationError::NoMailGroupKey
+			})?;
 
 		// the key is not copy and we want to re-use it after moving it into the map fn
 		// not using a move closure also doesn't work since we don't want to collect the iterator here.
@@ -658,12 +598,12 @@ impl Importer {
 			},
 		};
 
-        let state_file_path = import_directory.join("import_mail_state");
+		let state_file_path = import_directory.join(STATE_ID_FILE_NAME);
         fs::write(
             state_file_path,
             format!("{}/{}", remote_state_id.list_id, remote_state_id.element_id),
         )
-            .map_err(ImportError::IOError)?;
+		.map_err(|_| PreparationError::StateFileWriteFailed)?;
 
 		let import_essentials = ImportEssential {
 			logged_in_sdk,
@@ -808,19 +748,57 @@ impl Importer {
 		&self,
 		import_error: ImportError,
 	) -> Result<(), ImportError> {
-		// todo:
+		// todo: review
 		match import_error {
-			_ => Err(import_error),
+			ImportError::NoImportFeature => Err(ImportError::NoImportFeature),
+
+			ImportError::SdkError {
+				action: _,
+				error: _,
+			} => {
+				// todo:
+				// what to do here?
+				Ok(())
+			},
+
+			ImportError::EmptyBlobServerList => {
+				// todo:
+				// should be enough to retry?
+				// at what case can server answer the request but return empty list?
+				Err(ImportError::EmptyBlobServerList)
+			},
+			ImportError::LocalImportStateIdInvalid => {
+				// since the id file itself is corrupted, we can not do anything about it,
+				// instead show user import directory and ask them to delete the directory manually
+				Err(ImportError::LocalImportStateIdInvalid)
+			},
+
+			ImportError::IterationError(e) => {
+				// probably we can just continue to iterate through the source,
+				// downside: we might lose this item and when we finish we empty the dir,
+				// do this item just got lost in void
+				Ok(())
+			},
+
+			ImportError::TooBigChunk => {
+				// we can continue ad this chunk will be added to failed mails count
+				Ok(())
+			},
+			ImportError::FileDeletionError(_, _) => {
+				// we can not delete the file after we imported it,
+				// best case: everything else is fine and import is finished/canceled so we just delete the whole dir
+				// worst case: use pause/resume ( or quit the app and open again ) and the imported chunk will be imported again
+				Ok(())
+			},
 		}
 	}
 
 	pub(super) fn existing_import(
 		import_directory: &Path,
 	) -> std::io::Result<Option<IdTupleGenerated>> {
-		let state_file_path = import_directory.join("import_mail_state");
+		let state_file_path = import_directory.join(STATE_ID_FILE_NAME);
 
-		let state_file_exists = state_file_path.try_exists()?;
-		if !state_file_exists {
+		if !state_file_path.try_exists()? {
 			return Ok(None);
 		}
 
@@ -835,11 +813,41 @@ impl Importer {
 		let id_tuple = IdTupleGenerated::new(GeneratedId(list_id), GeneratedId(element_id));
 		Ok(Some(id_tuple))
 	}
+
+	// todo: use this function to do certain task that have very minimal chances of failure?
+	// example: deleting file, copying file, loading state from server
+	// keep executing the action Nth time maximum until we get Ok()
+	pub fn do_until_ok<const MAX_LIMIT: usize, O, E>(
+		action: impl Fn() -> Result<O, E>,
+	) -> Result<O, E> {
+		let mut last_result = action();
+
+		for _ in 1..=MAX_LIMIT {
+			last_result = action();
+			if last_result.is_ok() {
+				return last_result;
+			}
+		}
+
+		last_result
+	}
 }
 
-impl ImportError {
-	pub fn sdk(action: &'static str, error: ApiCallError) -> Self {
-		Self::SdkError { action, error }
+impl From<IdTupleGenerated> for ImportMailStateId {
+	fn from(id_tuple: IdTupleGenerated) -> Self {
+		Self {
+			list_id: id_tuple.list_id.to_string(),
+			element_id: id_tuple.element_id.to_string(),
+		}
+	}
+}
+
+impl From<ImportMailStateId> for IdTupleGenerated {
+	fn from(id_tuple: ImportMailStateId) -> Self {
+		Self {
+			list_id: GeneratedId::from(id_tuple.list_id),
+			element_id: GeneratedId::from(id_tuple.element_id),
+		}
 	}
 }
 
@@ -1024,7 +1032,7 @@ mod tests {
 			fs::create_dir_all(&import_dir).unwrap();
 		}
 		let mut state_id_file_path = import_dir.clone();
-		state_id_file_path.push("import_mail_state");
+		state_id_file_path.push(STATE_ID_FILE_NAME);
 		let invalid_id = "blah";
 		fs::write(&state_id_file_path, invalid_id).unwrap();
 

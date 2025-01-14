@@ -1,3 +1,4 @@
+use crate::importer::errors::{FileIterationError, PreparationError};
 use crate::importer::importable_mail::ImportableMail;
 use mail_parser::mailbox::mbox::MessageIterator;
 use mail_parser::MessageParser;
@@ -7,32 +8,7 @@ use std::path::PathBuf;
 
 pub struct FileImport {
 	eml_sources: Vec<PathBuf>,
-
 	message_parser: MessageParser,
-}
-
-#[derive(Debug)]
-pub enum FileIterationError {
-	/// We have read all contents
-	SourceEnd,
-
-	/// Cannot parse next item from mbox
-	MboxParseError(mail_parser::mailbox::mbox::ParseError),
-
-	/// File read error
-	FileReadError(PathBuf),
-
-	/// Not a valid eml or mbox file
-	UnsupportedFile,
-
-	/// Cannot convert the read message to ImportableMail
-	NoImportableMail,
-
-	/// Can not parse file content to Message format
-	NotAValidEmailFile,
-	CantWriteToDisk(std::io::Error),
-	CantDeleteDirectory(PathBuf),
-	CantCreateDirectory(PathBuf),
 }
 
 struct SourceEml {
@@ -56,12 +32,12 @@ impl FileImport {
 }
 
 impl FileImport {
-	pub fn new(eml_sources: Vec<PathBuf>) -> Result<Self, FileIterationError> {
+	pub fn new(eml_sources: Vec<PathBuf>) -> Self {
 		let message_parser = MessageParser::default();
-		Ok(Self {
+		Self {
 			eml_sources,
 			message_parser,
-		})
+		}
 	}
 
 	/// Convert mbox files to eml and copy all eml files to target_folder.
@@ -72,17 +48,17 @@ impl FileImport {
 		config_directory: &str,
 		mailbox_id: &str,
 		source_paths: impl Iterator<Item = PathBuf>,
-	) -> Result<PathBuf, FileIterationError> {
+	) -> Result<PathBuf, PreparationError> {
 		let import_directory_path = FileImport::make_import_directory(config_directory, mailbox_id);
 
 		// start clean import,
 		// example: import_state id file is not there but some eml files are,
 		// in that case we don't want to include those eml in this import
 		FileImport::delete_dir_if_exists(&import_directory_path)
-			.map_err(|e| FileIterationError::CantDeleteDirectory(import_directory_path.clone()))?;
+			.map_err(|_| PreparationError::CanNotDeleteImportDir)?;
 
 		fs::create_dir_all(&import_directory_path)
-			.map_err(|e| FileIterationError::CantCreateDirectory(import_directory_path.clone()))?;
+			.map_err(|_| PreparationError::CanNotCreateImportDir)?;
 		let mut file_counter = 0;
 
 		for source_path in source_paths {
@@ -90,19 +66,28 @@ impl FileImport {
 			let is_eml_file = source_path.extension() == Some("eml".as_ref());
 
 			if is_mbox_file {
-				let file_buf_reader = fs::File::open(&source_path)
-					.map(BufReader::new)
-					.map_err(|_read_err| FileIterationError::FileReadError(source_path.clone()))?;
-				let msg_iterator = MessageIterator::new(file_buf_reader);
+				let file_buf_reader =
+					fs::File::open(&source_path)
+						.map(BufReader::new)
+						.map_err(|read_err| {
+							log::error!("Can not read file: {source_path:?}. Error: {read_err:?}");
+							PreparationError::FileReadError
+						})?;
 
+				let msg_iterator = MessageIterator::new(file_buf_reader);
 				for parsed_message in msg_iterator {
 					let target_eml_file_path =
 						import_directory_path.join(file_counter.to_string() + ".eml");
-					let parsed_message = parsed_message
-						.map_err(|_parse_err| FileIterationError::NotAValidEmailFile)?;
+					let parsed_message = parsed_message.map_err(|parse_err| {
+						log::error!("Can not parse a message from mbox: {parse_err:?}");
+						PreparationError::NotAValidEmailFile
+					})?;
 
 					fs::write(&target_eml_file_path, parsed_message.contents()).map_err(
-						|_write_e| FileIterationError::FileReadError(target_eml_file_path.clone()),
+						|write_e| {
+							log::error!("Can not write deconstructed eml: {file_counter}. Error: {write_e:?}");
+							PreparationError::EmlFileWriteFailure
+						},
 					)?;
 
 					file_counter += 1;
@@ -110,12 +95,14 @@ impl FileImport {
 			} else if is_eml_file {
 				let target_eml_file_path =
 					import_directory_path.join(file_counter.to_string() + ".eml");
-				fs::copy(&source_path, &target_eml_file_path)
-					.map_err(|_| FileIterationError::FileReadError(target_eml_file_path.clone()))?;
+				fs::copy(&source_path, &target_eml_file_path).map_err(|copy_err| {
+					log::error!("Can not copy eml: {source_path:?}. Error: {copy_err:?}");
+					PreparationError::EmlFileWriteFailure
+				})?;
 
 				file_counter += 1;
 			} else {
-				Err(FileIterationError::UnsupportedFile)?
+				Err(PreparationError::UnsupportedFile)?
 			}
 		}
 
@@ -129,14 +116,13 @@ impl FileImport {
 		// move to next mbox sources,
 		let eml = self.next_eml_contents()?;
 
-		let parsed_message = self
-			.message_parser
+		self.message_parser
 			.parse(eml.file_content.as_slice())
-			.ok_or(FileIterationError::NotAValidEmailFile)?;
-		let importable_mail =
-			ImportableMail::convert_from(&parsed_message, Some(eml.eml_file_path))
-				.map_err(|_e| FileIterationError::NoImportableMail)?;
-		Ok(importable_mail)
+			.map(|parsed_message| {
+				ImportableMail::convert_from(&parsed_message, Some(eml.eml_file_path)).ok()
+			})
+			.flatten()
+			.ok_or(FileIterationError::NoImportableMail)
 	}
 
 	pub fn delete_dir_if_exists(target_dir: &PathBuf) -> std::io::Result<()> {
@@ -159,7 +145,7 @@ impl FileImport {
 #[cfg(test)]
 mod test {
 	use crate::importer::file_reader::FileImport;
-	use crate::importer::Importer;
+	use crate::importer::{Importer, STATE_ID_FILE_NAME};
 	use std::fs;
 	use std::fs::File;
 	use std::io::Write;
@@ -373,7 +359,7 @@ Yeah, but I really did not like it. Had higher hopes after watching that Simpson
 		fs::create_dir_all(&import_dir).unwrap();
 
 		let leftover_eml = import_dir.join("old-1.eml");
-		let state_file = import_dir.join("import_mail_state");
+		let state_file = import_dir.join(STATE_ID_FILE_NAME);
 		fs::write(&state_file, "list-id/element-id").unwrap();
 		fs::write(leftover_eml.as_path(), "sample mail").unwrap();
 

@@ -1,4 +1,4 @@
-use crate::importer::file_reader::FileIterationError;
+use crate::importer::errors::FileIterationError;
 use crate::importer::ImportEssential;
 use crate::tuta_imap::client::types::ImapMail;
 use extend_mail_parser::MakeString;
