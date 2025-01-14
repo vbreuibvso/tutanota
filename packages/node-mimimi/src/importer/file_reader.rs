@@ -119,10 +119,9 @@ impl FileImport {
 		self.message_parser
 			.parse(eml.file_content.as_slice())
 			.map(|parsed_message| {
-				ImportableMail::convert_from(&parsed_message, Some(eml.eml_file_path)).ok()
+				ImportableMail::convert_from(&parsed_message, Some(eml.eml_file_path.clone()))
 			})
-			.flatten()
-			.ok_or(FileIterationError::NoImportableMail)
+			.ok_or(FileIterationError::ParseError(eml.eml_file_path))
 	}
 
 	pub fn delete_dir_if_exists(target_dir: &PathBuf) -> std::io::Result<()> {

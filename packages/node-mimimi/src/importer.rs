@@ -744,6 +744,9 @@ impl Importer {
 		Ok(())
 	}
 
+	/// called if any chunk fails to import for any reason. if it returns `Ok`, we should continue with the next
+	/// chunk, if it returns `Err`, the error should be propagated to the node process to meybe be displayed and
+	/// the import should stop for now.
 	fn handle_err_while_importing_chunk(
 		&self,
 		import_error: ImportError,
@@ -752,21 +755,13 @@ impl Importer {
 		match import_error {
 			ImportError::NoImportFeature => Err(ImportError::NoImportFeature),
 
-			ImportError::SdkError {
+			ImportError::EmptyBlobServerList
+			| ImportError::GenericSdkError
+			| ImportError::SdkError {
 				action: _,
 				error: _,
-			} => {
-				// todo:
-				// what to do here?
-				Ok(())
-			},
-
-			ImportError::EmptyBlobServerList => {
-				// todo:
-				// should be enough to retry?
-				// at what case can server answer the request but return empty list?
-				Err(ImportError::EmptyBlobServerList)
-			},
+			} => Err(ImportError::GenericSdkError),
+			
 			ImportError::LocalImportStateIdInvalid => {
 				// since the id file itself is corrupted, we can not do anything about it,
 				// instead show user import directory and ask them to delete the directory manually
@@ -781,7 +776,9 @@ impl Importer {
 			},
 
 			ImportError::TooBigChunk => {
-				// we can continue ad this chunk will be added to failed mails count
+				// likely caused by a single mail that's too big for a single chunk.
+				// we can continue and this mail will be added to failed mails count.
+				// todo: we should clean up before propagating this
 				Ok(())
 			},
 			ImportError::FileDeletionError(_, _) => {

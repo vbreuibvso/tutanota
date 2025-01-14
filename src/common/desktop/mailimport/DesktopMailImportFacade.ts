@@ -31,7 +31,6 @@ export class DesktopMailImportFacade implements NativeMailImportFacade {
 		} else {
 			const tutaCredentials = this.createTutaCredentials(unencryptedTutaCredentials, apiUrl)
 			const importerApi = await ImporterApi.getResumableImport(mailboxId, this.configDirectory, targetOwnerGroup, tutaCredentials)
-
 			if (importerApi != null) {
 				importerApi.setErrorHook((err: string) => this.processMimimiMessage(mailboxId, err))
 				console.log("set a hook")
