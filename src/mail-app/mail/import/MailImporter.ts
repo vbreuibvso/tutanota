@@ -121,7 +121,7 @@ export class MailImporter {
 	 */
 	async onStartBtnClick(targetFolder: MailFolder, filePaths: Array<string>) {
 		if (isEmpty(filePaths)) return
-		if (!this.shouldShowStartButton()) throw new ProgrammingError("can't change state to starting")
+		if (!this.shouldRenderStartButton()) throw new ProgrammingError("can't change state to starting")
 
 		this.resetStatus()
 
@@ -181,11 +181,11 @@ export class MailImporter {
 		await nativeImportFacade.setProgressAction(mailboxId, ImportProgressAction.Stop)
 	}
 
-	shouldShowStartButton() {
+	shouldRenderStartButton() {
 		return this.uiStatus === UiImportStatus.Idle || this.uiStatus === UiImportStatus.Error
 	}
 
-	shouldShowImportStatus(): boolean {
+	shouldRenderImportStatus(): boolean {
 		return (
 			this.uiStatus === UiImportStatus.Starting ||
 			this.uiStatus === UiImportStatus.Running ||
@@ -227,10 +227,11 @@ export class MailImporter {
 
 	shouldRenderProcessedMails(): boolean {
 		return (
-			this.uiStatus === UiImportStatus.Running ||
-			this.uiStatus === UiImportStatus.Resuming ||
-			this.uiStatus === UiImportStatus.Pausing ||
-			this.uiStatus === UiImportStatus.Paused
+			this.progressMonitor?.totalWork != DEFAULT_TOTAL_WORK &&
+			(this.uiStatus === UiImportStatus.Running ||
+				this.uiStatus === UiImportStatus.Resuming ||
+				this.uiStatus === UiImportStatus.Pausing ||
+				this.uiStatus === UiImportStatus.Paused)
 		)
 	}
 
@@ -295,8 +296,17 @@ export class MailImporter {
 		if (wasUpdatedForThisImport) {
 			const remoteStatus = parseInt(serverState.status) as ImportStatus
 
-			if (isFinalisedImport(remoteStatus)) this.resetStatus()
-			else this.uiStatus = importStatusToUiImportStatus(remoteStatus)
+			if (isFinalisedImport(remoteStatus)) {
+				this.resetStatus()
+				this.startProgressEstimation()
+				this.updateFinalisedImport(elementIdPart(serverState._id), serverState)
+			} else {
+				this.uiStatus = importStatusToUiImportStatus(remoteStatus)
+				const newTotalWork = parseInt(serverState.totalMails)
+				const newDoneWork = parseInt(serverState.successfulMails) + parseInt(serverState.failedMails)
+				this.updateProgressMonitorTotalWork(newTotalWork)
+				this.progressMonitor?.totalWorkDone(newDoneWork)
+			}
 		} else {
 			this.updateFinalisedImport(elementIdPart(serverState._id), serverState)
 		}
@@ -313,7 +323,7 @@ export class MailImporter {
 	}
 
 	getProgress() {
-		return Math.round(this.progress)
+		return Math.ceil(this.progress)
 	}
 
 	getUiStatus() {

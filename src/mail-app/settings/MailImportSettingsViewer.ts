@@ -63,8 +63,8 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 			isDesktop()
 				? [
 						this.renderTargetFolderControls(),
-						!this.mailImporter?.shouldShowImportStatus() ? this.renderStartNewImportControls() : null,
-						this.mailImporter?.shouldShowImportStatus() ? this.renderImportStatus() : null,
+						!this.mailImporter?.shouldRenderImportStatus() ? this.renderStartNewImportControls() : null,
+						this.mailImporter?.shouldRenderImportStatus() ? this.renderImportStatus() : null,
 						this.renderImportHistory(),
 				  ]
 				: [this.renderNoImportOnWebText()],
@@ -136,7 +136,7 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 			return m(DropDownSelector, {
 				label: "mailImportTargetFolder_label",
 				items: targetFolders,
-				disabled: this.mailImporter.shouldShowImportStatus(),
+				disabled: this.mailImporter.shouldRenderImportStatus(),
 				selectedValue: this.selectedTargetFolder,
 				selectedValueDisplay: this.selectedTargetFolder ? getFolderName(this.selectedTargetFolder) : loadingMsg,
 				selectionChangedHandler: (newFolder: MailFolder | null) => (this.selectedTargetFolder = newFolder),

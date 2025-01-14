@@ -113,12 +113,6 @@ impl ImporterApi {
 			.set_next_progress_action(next_progress_action)
 			.await;
 
-		let previous_loop_handle =
-			std::mem::take(&mut self.importer_loop_handle).ok_or(ImportError::NoRunningImport)?;
-		previous_loop_handle
-			.await
-			.expect("Can not join the task handle");
-
 		match next_progress_action {
 			ImportProgressAction::Continue => {
 				self.importer
