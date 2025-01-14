@@ -393,7 +393,7 @@ export class GroupManagementFacade {
 
 		const givenUserGroupKeyHash = this.cryptoWrapper.aesDecrypt(userGroupAuthKey, givenEncryptedUserGroupKeyHash.mac, true)
 
-		const generatedUserGroupKeyHash = this.keyAuthenticationFacade.generateNewUserGroupKeyHash(versionedDecryptedUserGroupKey)
+		const generatedUserGroupKeyHash = this.keyAuthenticationFacade.generateNewUserGroupKeyAuthenticationData(versionedDecryptedUserGroupKey)
 
 		const verified = arrayEquals(givenUserGroupKeyHash, generatedUserGroupKeyHash)
 

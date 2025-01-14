@@ -183,9 +183,9 @@ o.spec("GroupManagementFacadeTest", function () {
 
 				when(cryptoWrapper.aesDecrypt(anything(), pubAdminGroupEncGKey.symKeyTag?.mac, true)).thenReturn(givenUserGroupKeyHash)
 
-				when(keyAuthenticationFacade.generateNewUserGroupKeyHash(argThat((arg: VersionedKey) => arg.object === groupKeyBytes))).thenReturn(
-					computedUserGroupKeyHash,
-				)
+				when(
+					keyAuthenticationFacade.generateNewUserGroupKeyAuthenticationData(argThat((arg: VersionedKey) => arg.object === groupKeyBytes)),
+				).thenReturn(computedUserGroupKeyHash)
 
 				const groupKey = await groupManagementFacade.getCurrentGroupKeyViaAdminEncGKey(groupId)
 				o(groupKey.object).equals(groupKeyBytes)
@@ -279,9 +279,9 @@ o.spec("GroupManagementFacadeTest", function () {
 						),
 					).thenReturn(derivedAuthKeyV0)
 					when(cryptoWrapper.aesDecrypt(derivedAuthKeyV0, anything(), true)).thenReturn(givenUserGroupKeyV1Hash)
-					when(keyAuthenticationFacade.generateNewUserGroupKeyHash(argThat((arg: VersionedKey) => arg.object === userGroupSymKeyV1))).thenReturn(
-						computedUserGroupKeyV1Hash,
-					)
+					when(
+						keyAuthenticationFacade.generateNewUserGroupKeyAuthenticationData(argThat((arg: VersionedKey) => arg.object === userGroupSymKeyV1)),
+					).thenReturn(computedUserGroupKeyV1Hash)
 				})
 
 				o("successful asym decryption", async function () {
@@ -291,9 +291,9 @@ o.spec("GroupManagementFacadeTest", function () {
 						computed: new Uint8Array(numbers),
 						given: new Uint8Array(numbers),
 					}
-					when(keyAuthenticationFacade.generateNewUserGroupKeyHash(argThat((arg: VersionedKey) => arg.object === groupKeyBytes))).thenReturn(
-						userGroupKeyHashesV2.computed,
-					)
+					when(
+						keyAuthenticationFacade.generateNewUserGroupKeyAuthenticationData(argThat((arg: VersionedKey) => arg.object === groupKeyBytes)),
+					).thenReturn(userGroupKeyHashesV2.computed)
 
 					// Prepare V1
 					when(cryptoWrapper.aesDecrypt(derivedAuthKeyV1, anything(), true)).thenReturn(userGroupKeyHashesV2.given)
@@ -325,9 +325,9 @@ o.spec("GroupManagementFacadeTest", function () {
 					}
 
 					// Prepare V2
-					when(keyAuthenticationFacade.generateNewUserGroupKeyHash(argThat((arg: VersionedKey) => arg.object === groupKeyBytes))).thenReturn(
-						userGroupKeyHashesV2.computed,
-					)
+					when(
+						keyAuthenticationFacade.generateNewUserGroupKeyAuthenticationData(argThat((arg: VersionedKey) => arg.object === groupKeyBytes)),
+					).thenReturn(userGroupKeyHashesV2.computed)
 
 					// Prepare V1
 					when(cryptoWrapper.aesDecrypt(derivedAuthKeyV1, anything(), true)).thenReturn(userGroupKeyHashesV2.given)
@@ -346,9 +346,9 @@ o.spec("GroupManagementFacadeTest", function () {
 						computed: new Uint8Array(numbers),
 						given: new Uint8Array(numbers),
 					}
-					when(keyAuthenticationFacade.generateNewUserGroupKeyHash(argThat((arg: VersionedKey) => arg.object === groupKeyBytes))).thenReturn(
-						userGroupKeyHashesV2.computed,
-					)
+					when(
+						keyAuthenticationFacade.generateNewUserGroupKeyAuthenticationData(argThat((arg: VersionedKey) => arg.object === groupKeyBytes)),
+					).thenReturn(userGroupKeyHashesV2.computed)
 
 					// Prepare V1
 					when(cryptoWrapper.aesDecrypt(derivedAuthKeyV1, anything(), true)).thenReturn(userGroupKeyHashesV2.given)
@@ -393,7 +393,7 @@ o.spec("GroupManagementFacadeTest", function () {
 
 				when(keyLoaderFacade.loadFormerGroupKeyInstance(formerGroupKeyListId, 1)).thenResolve(formerGroupKeys)
 				when(cryptoWrapper.aesDecrypt(anything(), pubAdminGroupEncGKey.symKeyTag?.mac, true)).thenReturn(givenUserGroupKeyHash)
-				when(keyAuthenticationFacade.generateNewUserGroupKeyHash(anything())).thenReturn(computedUserGroupKeyHash)
+				when(keyAuthenticationFacade.generateNewUserGroupKeyAuthenticationData(anything())).thenReturn(computedUserGroupKeyHash)
 
 				const error = await assertThrows(TutanotaError, async () => await groupManagementFacade.getCurrentGroupKeyViaAdminEncGKey(groupId))
 				o(error.name).equals("UserGroupKeyVerificationError")
