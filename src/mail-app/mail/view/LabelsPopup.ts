@@ -85,7 +85,7 @@ export class LabelsPopup implements ModalComponent {
 				}),
 			),
 			m(BaseButton, {
-				label: "Apply",
+				label: "apply_action",
 				text: "Apply",
 				class: "limit-width noselect bg-transparent button-height text-ellipsis content-accent-fg flex items-center plr-button button-content justify-center border-top state-bg",
 				onclick: () => {
@@ -93,7 +93,7 @@ export class LabelsPopup implements ModalComponent {
 				},
 			} satisfies BaseButtonAttrs),
 			m(BaseButton, {
-				label: lang.get("close_alt"),
+				label: "close_alt",
 				text: lang.get("close_alt"),
 				class: "hidden-until-focus content-accent-fg button-content",
 				onclick: () => {

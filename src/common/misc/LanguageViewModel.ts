@@ -6,6 +6,10 @@ import { assertMainOrNodeBoot } from "../api/common/Env"
 
 export type TranslationKey = TranslationKeyType
 export type TranslationText = TranslationKey | lazy<string>
+export type ResolvedTranslation = {
+	id: TranslationKey | string
+	text: string
+}
 assertMainOrNodeBoot()
 export type DateTimeFormatOptions = {
 	hourCycle?: "h11" | "h12" | "h23" | "h24"
@@ -526,6 +530,14 @@ export class LanguageViewModel {
 
 	getMaybeLazy(value: TranslationText): string {
 		return typeof value === "function" ? value() : lang.get(value)
+	}
+
+	testId(value: ResolvedTranslation | TranslationKey) {
+		return typeof value === "object" ? (value as ResolvedTranslation).id : (value as TranslationKey)
+	}
+
+	resolveToTranslation(value: ResolvedTranslation | TranslationKey) {
+		return typeof value === "object" ? (value as ResolvedTranslation).text : lang.getMaybeLazy(value as TranslationKey)
 	}
 }
 

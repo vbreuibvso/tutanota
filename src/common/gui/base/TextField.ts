@@ -241,6 +241,7 @@ export class TextField implements ClassComponent<TextFieldAttrs> {
 				".flex-grow.rel",
 				autofillGuard.concat([
 					m("input.input" + (a.alignRight ? ".right" : ""), {
+						// "data-testid": lang.testId(a.label),
 						autocomplete: a.autocompleteAs ?? "",
 						autocapitalize: a.autocapitalize,
 						type: a.type,

@@ -27,7 +27,7 @@ export class RowButton implements Component<RowButtonAttrs> {
 		const text = lang.getMaybeLazy(attrs.text ?? attrs.label)
 		const color = attrs.selected ? theme.content_button_selected : theme.content_button
 		return m(BaseButton, {
-			label,
+			label: attrs.label,
 			text: m(
 				".plr-button.text-ellipsis",
 				{

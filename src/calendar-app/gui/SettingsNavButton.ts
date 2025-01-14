@@ -19,7 +19,7 @@ export class SettingsNavButton implements Component<SettingsNavButtonAttrs> {
 		const child = m(
 			BaseButton,
 			{
-				label: lang.getMaybeLazy(attrs.label),
+				label: attrs.label,
 				text: m("span.flex-grow", lang.getMaybeLazy(attrs.label)),
 				icon: attrs.icon
 					? m(Icon, {

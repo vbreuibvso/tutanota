@@ -1,6 +1,6 @@
 import m, { Children, Component, Vnode } from "mithril"
 import { BaseButton, BaseButtonAttrs } from "./BaseButton.js"
-import { lang, TranslationText } from "../../../misc/LanguageViewModel.js"
+import { lang, TranslationKey, TranslationText } from "../../../misc/LanguageViewModel.js"
 
 export type LoginButtonAttrs = Pick<BaseButtonAttrs, "onclick" | "class"> & { label: TranslationText; disabled?: boolean }
 
@@ -15,6 +15,7 @@ export class LoginButton implements Component<LoginButtonAttrs> {
 			class: `button-content border-radius ${attrs.disabled ? "button-bg" : `accent-bg`} full-width center plr-button flash ${attrs.class} `,
 			onclick: attrs.onclick,
 			disabled: attrs.disabled,
+			id: attrs.label instanceof Function ? undefined : (attrs.label as TranslationKey),
 		})
 	}
 }

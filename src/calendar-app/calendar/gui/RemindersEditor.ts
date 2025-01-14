@@ -133,7 +133,8 @@ export class RemindersEditor implements Component<RemindersEditorAttrs> {
 						BaseButton,
 						{
 							//This might not make sense in other languages, but is better than what we have now
-							label: `${lang.get("delete_action")} ${humanDescriptionForAlarmInterval(alarm, lang.languageTag)}`,
+							label: "delete_action",
+							labelOverride: `${lang.get("delete_action")} ${humanDescriptionForAlarmInterval(alarm, lang.languageTag)}`,
 							onclick: () => removeAlarm(alarm),
 							class: "flex items-center",
 						},
