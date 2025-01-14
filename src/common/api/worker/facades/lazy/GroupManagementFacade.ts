@@ -352,7 +352,7 @@ export class GroupManagementFacade {
 		).decryptedAesKey
 
 		// this function is called recursively. therefore we must not return the group key version from the group but from the pubAdminEncUserKeyData
-		const versionedDecryptedUserGroupKey = { object: decryptedUserGroupKey, version: Number(pubAdminEncUserKeyData.symKeyTag?.hashedKeyVersion) }
+		const versionedDecryptedUserGroupKey = { object: decryptedUserGroupKey, version: Number(pubAdminEncUserKeyData.symKeyTag?.taggedKeyVersion) }
 
 		await this.verifyUserGroupKeyHash(pubAdminEncUserKeyData, userGroup, versionedDecryptedUserGroupKey)
 
@@ -363,7 +363,7 @@ export class GroupManagementFacade {
 		const givenEncryptedUserGroupKeyHash = assertNotNull(pubEncKeyData.symKeyTag)
 
 		// The given hash is authenticated by the previous user group key, so we can get the version from there.
-		const previousUserGroupKeyVersion = Number(givenEncryptedUserGroupKeyHash.encryptingKeyVersion)
+		const previousUserGroupKeyVersion = Number(givenEncryptedUserGroupKeyHash.taggingKeyVersion)
 
 		// get previous user group key: ag1 -> ag0 -> ug0
 		const formerGroupKeysListId = assertNotNull(userGroup.formerGroupKeys?.list)
@@ -382,7 +382,7 @@ export class GroupManagementFacade {
 		} else if (formerGroupKey.pubAdminGroupEncGKey != null) {
 			const pubAdminEncGKeyAuthHash = assertNotNull(formerGroupKey.pubAdminGroupEncGKey.symKeyTag)
 			// recurse, but expect to hit the end _before_ version 0, which should always be symmetrically encrypted
-			if (pubAdminEncGKeyAuthHash.hashedKeyVersion === "0") {
+			if (pubAdminEncGKeyAuthHash.taggedKeyVersion === "0") {
 				throw new TutanotaError("UserGroupKeyNotTrustedError", "cannot establish trust on the user group key")
 			}
 			previousUserGroupKey = await this.decryptViaAsymmetricAdminGKey(userGroup, formerGroupKey.pubAdminGroupEncGKey)
@@ -391,7 +391,7 @@ export class GroupManagementFacade {
 		}
 		const userGroupAuthKey = this.keyAuthenticationFacade.deriveUserGroupAuthKey(userGroup._id, previousUserGroupKey)
 
-		const givenUserGroupKeyHash = this.cryptoWrapper.aesDecrypt(userGroupAuthKey, givenEncryptedUserGroupKeyHash.encryptingKeyEncKeyHash, true)
+		const givenUserGroupKeyHash = this.cryptoWrapper.aesDecrypt(userGroupAuthKey, givenEncryptedUserGroupKeyHash.mac, true)
 
 		const generatedUserGroupKeyHash = this.keyAuthenticationFacade.generateNewUserGroupKeyHash(versionedDecryptedUserGroupKey)
 

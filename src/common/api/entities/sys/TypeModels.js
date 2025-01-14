@@ -339,6 +339,16 @@ export const typeModels = {
 				"refType": "GroupKeyRotationData",
 				"dependency": null
 			},
+			"adminPubKeyTagList": {
+				"final": false,
+				"name": "adminPubKeyTagList",
+				"id": 2483,
+				"since": 111,
+				"type": "AGGREGATION",
+				"cardinality": "Any",
+				"refType": "KeyAuthenticationData",
+				"dependency": null
+			},
 			"distribution": {
 				"final": false,
 				"name": "distribution",
@@ -347,16 +357,6 @@ export const typeModels = {
 				"type": "AGGREGATION",
 				"cardinality": "Any",
 				"refType": "AdminGroupKeyDistributionElement",
-				"dependency": null
-			},
-			"userEncAdminPubKeyHashList": {
-				"final": false,
-				"name": "userEncAdminPubKeyHashList",
-				"id": 2483,
-				"since": 111,
-				"type": "AGGREGATION",
-				"cardinality": "Any",
-				"refType": "EncryptedKeyHash",
 				"dependency": null
 			},
 			"userGroupKeyData": {
@@ -403,14 +403,14 @@ export const typeModels = {
 				"refType": "KeyPair",
 				"dependency": null
 			},
-			"adminEncDistKeyHash": {
+			"distKeyTag": {
 				"final": false,
-				"name": "adminEncDistKeyHash",
+				"name": "distKeyTag",
 				"id": 2532,
 				"since": 118,
 				"type": "AGGREGATION",
 				"cardinality": "One",
-				"refType": "EncryptedKeyHash",
+				"refType": "KeyAuthenticationData",
 				"dependency": null
 			}
 		},
@@ -4507,67 +4507,6 @@ export const typeModels = {
 		"app": "sys",
 		"version": "118"
 	},
-	"EncryptedKeyHash": {
-		"name": "EncryptedKeyHash",
-		"since": 111,
-		"type": "AGGREGATED_TYPE",
-		"id": 2477,
-		"rootId": "A3N5cwAJrQ",
-		"versioned": false,
-		"encrypted": false,
-		"values": {
-			"_id": {
-				"final": true,
-				"name": "_id",
-				"id": 2478,
-				"since": 111,
-				"type": "CustomId",
-				"cardinality": "One",
-				"encrypted": false
-			},
-			"encryptingKeyEncKeyHash": {
-				"final": false,
-				"name": "encryptingKeyEncKeyHash",
-				"id": 2481,
-				"since": 111,
-				"type": "Bytes",
-				"cardinality": "One",
-				"encrypted": false
-			},
-			"encryptingKeyVersion": {
-				"final": false,
-				"name": "encryptingKeyVersion",
-				"id": 2521,
-				"since": 118,
-				"type": "Number",
-				"cardinality": "One",
-				"encrypted": false
-			},
-			"hashedKeyVersion": {
-				"final": false,
-				"name": "hashedKeyVersion",
-				"id": 2480,
-				"since": 111,
-				"type": "Number",
-				"cardinality": "One",
-				"encrypted": false
-			}
-		},
-		"associations": {
-			"encryptingGroup": {
-				"final": false,
-				"name": "encryptingGroup",
-				"id": 2479,
-				"since": 111,
-				"type": "ELEMENT_ASSOCIATION",
-				"cardinality": "One",
-				"refType": "Group",
-				"dependency": null
-			}
-		},
-		"app": "sys",
-		"version": "118"
-	},
 	"EntityEventBatch": {
 		"name": "EntityEventBatch",
 		"since": 20,
@@ -7588,6 +7527,67 @@ export const typeModels = {
 		"app": "sys",
 		"version": "118"
 	},
+	"KeyAuthenticationData": {
+		"name": "KeyAuthenticationData",
+		"since": 111,
+		"type": "AGGREGATED_TYPE",
+		"id": 2477,
+		"rootId": "A3N5cwAJrQ",
+		"versioned": false,
+		"encrypted": false,
+		"values": {
+			"_id": {
+				"final": true,
+				"name": "_id",
+				"id": 2478,
+				"since": 111,
+				"type": "CustomId",
+				"cardinality": "One",
+				"encrypted": false
+			},
+			"mac": {
+				"final": false,
+				"name": "mac",
+				"id": 2481,
+				"since": 111,
+				"type": "Bytes",
+				"cardinality": "One",
+				"encrypted": false
+			},
+			"taggedKeyVersion": {
+				"final": false,
+				"name": "taggedKeyVersion",
+				"id": 2480,
+				"since": 111,
+				"type": "Number",
+				"cardinality": "One",
+				"encrypted": false
+			},
+			"taggingKeyVersion": {
+				"final": false,
+				"name": "taggingKeyVersion",
+				"id": 2521,
+				"since": 118,
+				"type": "Number",
+				"cardinality": "One",
+				"encrypted": false
+			}
+		},
+		"associations": {
+			"taggingGroup": {
+				"final": false,
+				"name": "taggingGroup",
+				"id": 2479,
+				"since": 111,
+				"type": "ELEMENT_ASSOCIATION",
+				"cardinality": "One",
+				"refType": "Group",
+				"dependency": null
+			}
+		},
+		"app": "sys",
+		"version": "118"
+	},
 	"KeyPair": {
 		"name": "KeyPair",
 		"since": 1,
@@ -7740,14 +7740,14 @@ export const typeModels = {
 				"refType": "KeyPair",
 				"dependency": null
 			},
-			"adminEncDistKeyHash": {
+			"adminPubKeyTag": {
 				"final": false,
-				"name": "adminEncDistKeyHash",
-				"id": 2523,
-				"since": 118,
+				"name": "adminPubKeyTag",
+				"id": 2482,
+				"since": 111,
 				"type": "AGGREGATION",
 				"cardinality": "ZeroOrOne",
-				"refType": "EncryptedKeyHash",
+				"refType": "KeyAuthenticationData",
 				"dependency": null
 			},
 			"distEncAdminGroupSymKey": {
@@ -7760,14 +7760,14 @@ export const typeModels = {
 				"refType": "PubEncKeyData",
 				"dependency": null
 			},
-			"userEncAdminPubKeyHash": {
+			"distKeyTag": {
 				"final": false,
-				"name": "userEncAdminPubKeyHash",
-				"id": 2482,
-				"since": 111,
+				"name": "distKeyTag",
+				"id": 2523,
+				"since": 118,
 				"type": "AGGREGATION",
 				"cardinality": "ZeroOrOne",
-				"refType": "EncryptedKeyHash",
+				"refType": "KeyAuthenticationData",
 				"dependency": null
 			}
 		},
@@ -10039,19 +10039,19 @@ export const typeModels = {
 				"cardinality": "One",
 				"encrypted": false
 			},
-			"authEncPubKeyHash": {
-				"final": false,
-				"name": "authEncPubKeyHash",
-				"id": 2537,
+			"pubEccKey": {
+				"final": true,
+				"name": "pubEccKey",
+				"id": 2538,
 				"since": 118,
 				"type": "Bytes",
 				"cardinality": "One",
 				"encrypted": false
 			},
-			"pubEccKey": {
-				"final": true,
-				"name": "pubEccKey",
-				"id": 2538,
+			"pubKeyMacTag": {
+				"final": false,
+				"name": "pubKeyMacTag",
+				"id": 2537,
 				"since": 118,
 				"type": "Bytes",
 				"cardinality": "One",
@@ -10181,7 +10181,7 @@ export const typeModels = {
 				"since": 118,
 				"type": "AGGREGATION",
 				"cardinality": "ZeroOrOne",
-				"refType": "EncryptedKeyHash",
+				"refType": "KeyAuthenticationData",
 				"dependency": null
 			}
 		},

@@ -77,8 +77,8 @@ export type AdminGroupKeyRotationPostIn = {
 	_format: NumberString;
 
 	adminGroupKeyData: GroupKeyRotationData;
+	adminPubKeyTagList: KeyAuthenticationData[];
 	distribution: AdminGroupKeyDistributionElement[];
-	userEncAdminPubKeyHashList: EncryptedKeyHash[];
 	userGroupKeyData: UserGroupKeyRotationData;
 }
 export const AdminGroupKeyRotationPutInTypeRef: TypeRef<AdminGroupKeyRotationPutIn> = new TypeRef("sys", "AdminGroupKeyRotationPutIn")
@@ -93,7 +93,7 @@ export type AdminGroupKeyRotationPutIn = {
 	_format: NumberString;
 
 	adminDistKeyPair: KeyPair;
-	adminEncDistKeyHash: EncryptedKeyHash;
+	distKeyTag: KeyAuthenticationData;
 }
 export const AdministratedGroupTypeRef: TypeRef<AdministratedGroup> = new TypeRef("sys", "AdministratedGroup")
 
@@ -1117,22 +1117,6 @@ export type EmailSenderListElement = {
 	type: NumberString;
 	value: string;
 }
-export const EncryptedKeyHashTypeRef: TypeRef<EncryptedKeyHash> = new TypeRef("sys", "EncryptedKeyHash")
-
-export function createEncryptedKeyHash(values: StrippedEntity<EncryptedKeyHash>): EncryptedKeyHash {
-	return Object.assign(create(typeModels.EncryptedKeyHash, EncryptedKeyHashTypeRef), values)
-}
-
-export type EncryptedKeyHash = {
-	_type: TypeRef<EncryptedKeyHash>;
-
-	_id: Id;
-	encryptingKeyEncKeyHash: Uint8Array;
-	encryptingKeyVersion: NumberString;
-	hashedKeyVersion: NumberString;
-
-	encryptingGroup: Id;
-}
 export const EntityEventBatchTypeRef: TypeRef<EntityEventBatch> = new TypeRef("sys", "EntityEventBatch")
 
 export function createEntityEventBatch(values: StrippedEntity<EntityEventBatch>): EntityEventBatch {
@@ -1831,6 +1815,22 @@ export type InvoiceItem = {
 	totalPrice: NumberString;
 	type: NumberString;
 }
+export const KeyAuthenticationDataTypeRef: TypeRef<KeyAuthenticationData> = new TypeRef("sys", "KeyAuthenticationData")
+
+export function createKeyAuthenticationData(values: StrippedEntity<KeyAuthenticationData>): KeyAuthenticationData {
+	return Object.assign(create(typeModels.KeyAuthenticationData, KeyAuthenticationDataTypeRef), values)
+}
+
+export type KeyAuthenticationData = {
+	_type: TypeRef<KeyAuthenticationData>;
+
+	_id: Id;
+	mac: Uint8Array;
+	taggedKeyVersion: NumberString;
+	taggingKeyVersion: NumberString;
+
+	taggingGroup: Id;
+}
 export const KeyPairTypeRef: TypeRef<KeyPair> = new TypeRef("sys", "KeyPair")
 
 export function createKeyPair(values: StrippedEntity<KeyPair>): KeyPair {
@@ -1865,9 +1865,9 @@ export type KeyRotation = {
 	targetKeyVersion: NumberString;
 
 	adminDistKeyPair: null | KeyPair;
-	adminEncDistKeyHash: null | EncryptedKeyHash;
+	adminPubKeyTag: null | KeyAuthenticationData;
 	distEncAdminGroupSymKey: null | PubEncKeyData;
-	userEncAdminPubKeyHash: null | EncryptedKeyHash;
+	distKeyTag: null | KeyAuthenticationData;
 }
 export const KeyRotationsRefTypeRef: TypeRef<KeyRotationsRef> = new TypeRef("sys", "KeyRotationsRef")
 
@@ -2472,8 +2472,8 @@ export type PubDistributionKey = {
 	_type: TypeRef<PubDistributionKey>;
 
 	_id: Id;
-	authEncPubKeyHash: Uint8Array;
 	pubEccKey: Uint8Array;
+	pubKeyMacTag: Uint8Array;
 	pubKyberKey: Uint8Array;
 
 	userGroupId: Id;
@@ -2497,7 +2497,7 @@ export type PubEncKeyData = {
 	senderIdentifierType: null | NumberString;
 	senderKeyVersion: null | NumberString;
 
-	symKeyTag: null | EncryptedKeyHash;
+	symKeyTag: null | KeyAuthenticationData;
 }
 export const PublicKeyGetInTypeRef: TypeRef<PublicKeyGetIn> = new TypeRef("sys", "PublicKeyGetIn")
 
