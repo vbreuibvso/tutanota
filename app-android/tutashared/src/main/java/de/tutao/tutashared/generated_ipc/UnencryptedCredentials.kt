@@ -17,5 +17,4 @@ data class UnencryptedCredentials(
 	val databaseKey: DataWrapper?,
 	val encryptedPassword: String,
 	val encryptedPassphraseKey: DataWrapper?,
-	val apiUrl: String,
 )

@@ -5,7 +5,7 @@
 	"receivers": ["desktop"],
 	"doc": "Facade implemented by the native desktop client enabling mail imports, both from files, and via IMAP.",
 	"methods": {
-		"getResumeableImport": {
+		"getResumableImport": {
 			"doc": "@returns the mail import state id of the import that might be resumed",
 			"arg": [
 				{
@@ -16,6 +16,9 @@
 				},
 				{
 					"unencryptedTutaCredentials": "UnencryptedCredentials"
+				},
+				{
+					"apiUrl": "string"
 				}
 			],
 			"ret": "IdTuple?"
@@ -27,16 +30,19 @@
 					"mailboxId": "string"
 				},
 				{
-					"unencryptedTutaCredentials": "UnencryptedCredentials"
-				},
-				{
 					"targetOwnerGroup": "string"
 				},
 				{
-					"targetMailset": "List<string>"
+					"targetMailSet": "List<string>"
 				},
 				{
 					"filePaths": "List<string>"
+				},
+				{
+					"unencryptedTutaCredentials": "UnencryptedCredentials"
+				},
+				{
+					"apiUrl": "string"
 				}
 			],
 			"ret": "IdTuple"

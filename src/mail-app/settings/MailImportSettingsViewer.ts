@@ -200,22 +200,22 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 		}
 
 		let buttonControls = []
-		if (this.mailImporter.shouldShowPauseButton()) {
+		if (this.mailImporter.shouldRenderPauseButton()) {
 			buttonControls.push(m(IconButton, pauseMailImportIconButtonAttrs))
 		}
 		if (this.mailImporter.shouldShowResumeButton()) {
 			buttonControls.push(m(IconButton, resumeMailImportIconButtonAttrs))
 		}
-		if (this.mailImporter.shouldShowCancelButton()) {
+		if (this.mailImporter.shouldRenderCancelButton()) {
 			buttonControls.push(m(IconButton, cancelMailImportIconButtonAttrs))
 		}
 
 		return [
 			[
 				m(
-					".flex-space-between.p.small.mt-l",
+					".flex-space-between.p.small.mt-m",
 					getReadableUiImportStatus(this.mailImporter.getUiStatus()),
-					this.mailImporter.shouldShowProcessedMails() ? processedMailsCountLabel : null,
+					this.mailImporter.shouldRenderProcessedMails() ? processedMailsCountLabel : null,
 				),
 			],
 			[m(".flex-space-between.border-radius-big.mt-s.rel.nav-bg.full-width", this.renderMailImportProgressBar(), ...buttonControls)],

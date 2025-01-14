@@ -43,7 +43,8 @@ export class MailImporter {
 	private progress: number = DEFAULT_PROGRESS
 
 	private finalisedImportStates: Map<Id, ImportMailState> = new Map()
-	private activeImportState: IdTuple | null = null
+	private activeImportId: IdTuple | null = null
+	private activeImportStartTimestamp: number | null = null
 	private uiStatus: UiImportStatus
 
 	private eventController: EventController
@@ -76,18 +77,19 @@ export class MailImporter {
 	async initImportMailStates(): Promise<void> {
 		const importFacade = assertNotNull(this.nativeMailImportFacade)
 
-		if (this.activeImportState === null) {
+		if (this.activeImportId === null) {
 			const mailbox = await this.getMailbox()
-			const mailOwnerGroup = (await this.mailboxModel.getUserMailboxDetails()).mailGroup
+			const mailOwnerGroupId = assertNotNull(mailbox._ownerGroup)
 			const userId = this.loginController.getUserController().userId
 			const unencryptedCredentials = assertNotNull(await this.credentialsProvider?.getDecryptedCredentialsByUserId(userId))
-			this.activeImportState = await importFacade.getResumeableImport(mailbox._id, mailOwnerGroup._id, unencryptedCredentials)
+			const apiUrl = getApiBaseUrl(this.domainConfigProvider.getCurrentDomainConfig())
+			this.activeImportId = await importFacade.getResumableImport(mailbox._id, mailOwnerGroupId, unencryptedCredentials, apiUrl)
 		}
 
-		if (this.activeImportState) {
+		if (this.activeImportId) {
 			// we can't use the result of loadAll (see below) as that might only read from offline cache and
 			// not include a new ImportMailState that was created without sending an entity event
-			const importMailState = await this.entityClient.load(ImportMailStateTypeRef, this.activeImportState)
+			const importMailState = await this.entityClient.load(ImportMailStateTypeRef, this.activeImportId)
 			const remoteStatus = parseInt(importMailState.status) as ImportStatus
 
 			switch (remoteStatus) {
@@ -105,7 +107,7 @@ export class MailImporter {
 
 		const importMailStatesCollection = await this.entityClient.loadAll(ImportMailStateTypeRef, (await this.getMailbox()).mailImportStates)
 		for (const importMailState of importMailStatesCollection) {
-			if (importMailState._id != this.activeImportState) {
+			if (importMailState._id != this.activeImportId) {
 				this.updateFinalisedImport(elementIdPart(importMailState._id), importMailState)
 			}
 		}
@@ -124,17 +126,20 @@ export class MailImporter {
 		this.resetStatus()
 
 		const apiUrl = getApiBaseUrl(this.domainConfigProvider.getCurrentDomainConfig())
-		const ownerGroup = assertNotNull(targetFolder._ownerGroup)
+		const mailbox = await this.getMailbox()
+		const mailboxId = mailbox._id
+		const mailOwnerGroupId = assertNotNull(mailbox._ownerGroup)
 		const userId = this.loginController.getUserController().userId
 		const importFacade = assertNotNull(this.nativeMailImportFacade)
-		const unencryptedCredentials = assertNotNull(await this.credentialsProvider?.getDecryptedCredentialsByUserId(userId))
 
+		const unencryptedCredentials = assertNotNull(await this.credentialsProvider?.getDecryptedCredentialsByUserId(userId))
 		this.uiStatus = UiImportStatus.Starting
 		this.startProgressEstimation()
 		m.redraw()
 
-		// todo:
-		// call setProgressAction::Continue
+		this.activeImportId = await importFacade.prepareNewImport(mailboxId, mailOwnerGroupId, targetFolder._id, filePaths, unencryptedCredentials, apiUrl)
+		const nativeImportFacade = assertNotNull(this.nativeMailImportFacade)
+		await nativeImportFacade.setProgressAction(mailboxId, ImportProgressAction.Continue)
 	}
 
 	async onPauseBtnClick() {
@@ -153,7 +158,7 @@ export class MailImporter {
 
 	async onResumeBtnClick() {
 		if (!this.shouldShowResumeButton()) throw new ProgrammingError("can't change state to resuming")
-		if (!this.activeImportState) throw new ProgrammingError("can't change state to resuming")
+		if (!this.activeImportId) throw new ProgrammingError("can't change state to resuming")
 
 		this.uiStatus = UiImportStatus.Resuming
 		this.startProgressEstimation()
@@ -165,7 +170,7 @@ export class MailImporter {
 	}
 
 	async onCancelBtnClick() {
-		if (!this.shouldShowCancelButton()) throw new ProgrammingError("can't change state to cancelling")
+		if (!this.shouldRenderCancelButton()) throw new ProgrammingError("can't change state to cancelling")
 
 		this.uiStatus = UiImportStatus.Cancelling
 		this.stopProgressEstimation()
@@ -191,7 +196,7 @@ export class MailImporter {
 		)
 	}
 
-	shouldShowPauseButton(): boolean {
+	shouldRenderPauseButton(): boolean {
 		return this.uiStatus === UiImportStatus.Running || this.uiStatus === UiImportStatus.Starting || this.uiStatus === UiImportStatus.Pausing
 	}
 
@@ -207,7 +212,7 @@ export class MailImporter {
 		return this.uiStatus === UiImportStatus.Resuming || this.uiStatus === UiImportStatus.Starting
 	}
 
-	shouldShowCancelButton(): boolean {
+	shouldRenderCancelButton(): boolean {
 		return (
 			this.uiStatus === UiImportStatus.Paused ||
 			this.uiStatus === UiImportStatus.Running ||
@@ -220,7 +225,7 @@ export class MailImporter {
 		return this.uiStatus === UiImportStatus.Cancelling || this.uiStatus === UiImportStatus.Pausing || this.uiStatus === UiImportStatus.Starting
 	}
 
-	shouldShowProcessedMails(): boolean {
+	shouldRenderProcessedMails(): boolean {
 		return (
 			this.uiStatus === UiImportStatus.Running ||
 			this.uiStatus === UiImportStatus.Resuming ||
@@ -262,14 +267,12 @@ export class MailImporter {
 
 	private startProgressEstimation() {
 		clearInterval(this.progressEstimation)
-
+		this.activeImportStartTimestamp = Date.now()
 		this.progressEstimation = setInterval(() => {
-			let now = Date.now()
 			let completedMails = this.progressMonitor?.workCompleted
 			if (completedMails) {
-				// todo
-				// make it similar to: this.activeImport?.start_timestamp ?? now
-				let startTimestamp = null ?? now
+				let now = Date.now()
+				let startTimestamp = this.activeImportStartTimestamp ?? now
 				let durationSinceStartSeconds = (now - startTimestamp) / 1000
 				let mailsPerSecond = completedMails / durationSinceStartSeconds
 				let mailsPerSecondEstimate = Math.max(1, mailsPerSecond * PROGRESS_ESTIMATION_MAILS_PER_SECOND_SCALING_RATIO)
@@ -283,10 +286,11 @@ export class MailImporter {
 
 	private stopProgressEstimation() {
 		clearInterval(this.progressEstimation)
+		this.activeImportStartTimestamp = null
 	}
 
 	async newImportStateFromServer(serverState: ImportMailState) {
-		const wasUpdatedForThisImport = isSameId(this.activeImportState ?? null, serverState._id)
+		const wasUpdatedForThisImport = isSameId(this.activeImportId ?? null, serverState._id)
 
 		if (wasUpdatedForThisImport) {
 			const remoteStatus = parseInt(serverState.status) as ImportStatus
@@ -301,7 +305,7 @@ export class MailImporter {
 	}
 
 	private resetStatus() {
-		this.activeImportState = null
+		this.activeImportId = null
 		this.progressMonitor = null
 		this.progress = 0
 		this.stopProgressEstimation()

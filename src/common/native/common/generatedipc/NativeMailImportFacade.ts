@@ -8,23 +8,22 @@ export interface NativeMailImportFacade {
 	/**
 	 * @returns the mail import state id of the import that might be resumed
 	 */
-	getResumeableImport(mailboxId: string, targetOwnerGroup: string, unencryptedTutaCredentials: UnencryptedCredentials): Promise<IdTuple | null>
+	getResumableImport(mailboxId: string, targetOwnerGroup: string, unencryptedTutaCredentials: UnencryptedCredentials, apiUrl: string): Promise<IdTuple | null>
 
 	/**
 	 * set up a new import state for the given parameters and return the ID of the new state entity on the server
 	 */
 	prepareNewImport(
 		mailboxId: string,
-		unencryptedTutaCredentials: UnencryptedCredentials,
 		targetOwnerGroup: string,
-		targetMailset: ReadonlyArray<string>,
+		targetMailSet: ReadonlyArray<string>,
 		filePaths: ReadonlyArray<string>,
+		unencryptedTutaCredentials: UnencryptedCredentials,
+		apiUrl: string,
 	): Promise<IdTuple>
 
 	/**
 	 * Sets progress action for next import iteration
 	 */
 	setProgressAction(mailboxId: string, importProgressAction: number): Promise<void>
-
-	deinitLogger(): Promise<void>
 }

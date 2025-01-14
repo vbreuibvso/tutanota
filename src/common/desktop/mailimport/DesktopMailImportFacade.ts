@@ -16,12 +16,13 @@ export class DesktopMailImportFacade implements NativeMailImportFacade {
 		ImporterApi.deinitLog()
 	}
 
-	async getResumeableImport(
+	async getResumableImport(
 		mailboxId: string,
 		targetOwnerGroup: string,
 		unencryptedTutaCredentials: UnencryptedCredentials,
+		apiUrl: string,
 	): Promise<readonly [string, string] | null> {
-		const tutaCredentials = this.createTutaCredentials(unencryptedTutaCredentials)
+		const tutaCredentials = this.createTutaCredentials(unencryptedTutaCredentials, apiUrl)
 		const importerApi = await ImporterApi.getResumableImport(mailboxId, this.configDirectory, targetOwnerGroup, tutaCredentials)
 
 		if (importerApi != null) {
@@ -36,12 +37,13 @@ export class DesktopMailImportFacade implements NativeMailImportFacade {
 
 	async prepareNewImport(
 		mailboxId: string,
-		unencryptedTutaCredentials: UnencryptedCredentials,
 		targetOwnerGroup: string,
 		targetMailset: readonly string[],
 		filePaths: readonly string[],
+		unencryptedTutaCredentials: UnencryptedCredentials,
+		apiUrl: string,
 	): Promise<readonly [string, string]> {
-		const tutaCredentials = this.createTutaCredentials(unencryptedTutaCredentials)
+		const tutaCredentials = this.createTutaCredentials(unencryptedTutaCredentials, apiUrl)
 		if (this.importerApis.has(mailboxId)) {
 			// todo: error type?
 			throw new Error("already have a running import for this mailbox")
@@ -68,14 +70,14 @@ export class DesktopMailImportFacade implements NativeMailImportFacade {
 		await importerApi.setProgressAction(progressAction)
 	}
 
-	private createTutaCredentials(unencTutaCredentials: UnencryptedCredentials) {
+	private createTutaCredentials(unencTutaCredentials: UnencryptedCredentials, apiUrl: string) {
 		const tutaCredentials: TutaCredentials = {
 			accessToken: unencTutaCredentials?.accessToken,
 			isInternalCredential: unencTutaCredentials.credentialInfo.type === CredentialType.Internal,
 			encryptedPassphraseKey: unencTutaCredentials.encryptedPassphraseKey ? Array.from(unencTutaCredentials.encryptedPassphraseKey) : [],
 			login: unencTutaCredentials.credentialInfo.login,
 			userId: unencTutaCredentials.credentialInfo.userId,
-			apiUrl: unencTutaCredentials.apiUrl,
+			apiUrl: apiUrl,
 			clientVersion: env.versionNumber,
 		}
 		return tutaCredentials
