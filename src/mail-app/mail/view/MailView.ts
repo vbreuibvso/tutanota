@@ -1,9 +1,9 @@
 import m, { Children, Vnode } from "mithril"
 import { ViewSlider } from "../../../common/gui/nav/ViewSlider.js"
 import { ColumnType, ViewColumn } from "../../../common/gui/base/ViewColumn"
-import { lang, TranslationText } from "../../../common/misc/LanguageViewModel"
+import { lang } from "../../../common/misc/LanguageViewModel"
 import { Dialog } from "../../../common/gui/base/Dialog"
-import { FeatureType, HighestTierPlans, getMailFolderType, Keys, MailSetKind } from "../../../common/api/common/TutanotaConstants"
+import { FeatureType, getMailFolderType, Keys, MailSetKind } from "../../../common/api/common/TutanotaConstants"
 import { AppHeaderAttrs, Header } from "../../../common/gui/Header.js"
 import { Mail, MailBox, MailFolder } from "../../../common/api/entities/tutanota/TypeRefs.js"
 import { isEmpty, noOp, ofClass } from "@tutao/tutanota-utils"
@@ -84,7 +84,6 @@ export interface MailViewAttrs extends TopLevelAttrs {
 	drawerAttrs: DrawerMenuAttrs
 	cache: MailViewCache
 	header: AppHeaderAttrs
-	mailImporter: MailImporter | null
 	mailViewModel: MailViewModel
 }
 
@@ -96,7 +95,6 @@ export class MailView extends BaseTopLevelView implements TopLevelView<MailViewA
 	private readonly folderColumn: ViewColumn
 	private readonly mailColumn: ViewColumn
 	private readonly viewSlider: ViewSlider
-	private readonly mailImporter: MailImporter | null
 	cache: MailViewCache
 	readonly oncreate: TopLevelView["oncreate"]
 	readonly onremove: TopLevelView["onremove"]
@@ -112,7 +110,6 @@ export class MailView extends BaseTopLevelView implements TopLevelView<MailViewA
 
 	constructor(vnode: Vnode<MailViewAttrs>) {
 		super()
-		this.mailImporter = vnode.attrs.mailImporter
 		this.expandedState = new Set(deviceConfig.getExpandedFolders(locator.logins.getUserController().userId))
 		this.cache = vnode.attrs.cache
 		this.folderColumn = this.createFolderColumn(null, vnode.attrs.drawerAttrs)

@@ -43,11 +43,11 @@ struct SourceEml {
 impl FileImport {
 	fn next_eml_contents(&mut self) -> Result<SourceEml, FileIterationError> {
 		let eml_file_path = self
-				.eml_sources
-				.pop()
-				.ok_or(FileIterationError::SourceEnd)?;
+			.eml_sources
+			.pop()
+			.ok_or(FileIterationError::SourceEnd)?;
 		let file_content = fs::read(&eml_file_path)
-				.map_err(|_read_err| FileIterationError::FileReadError(eml_file_path.clone()))?;
+			.map_err(|_read_err| FileIterationError::FileReadError(eml_file_path.clone()))?;
 		Ok(SourceEml {
 			file_content,
 			eml_file_path,
@@ -71,7 +71,7 @@ impl FileImport {
 	pub(crate) fn prepare_file_import(
 		config_directory: &str,
 		mailbox_id: &str,
-		source_paths: impl Iterator<Item=PathBuf>,
+		source_paths: impl Iterator<Item = PathBuf>,
 	) -> Result<PathBuf, FileIterationError> {
 		let import_directory_path = FileImport::make_import_directory(config_directory, mailbox_id);
 
@@ -79,10 +79,10 @@ impl FileImport {
 		// example: import_state id file is not there but some eml files are,
 		// in that case we don't want to include those eml in this import
 		FileImport::delete_dir_if_exists(&import_directory_path)
-				.map_err(|e| FileIterationError::CantDeleteDirectory(import_directory_path.clone()))?;
+			.map_err(|e| FileIterationError::CantDeleteDirectory(import_directory_path.clone()))?;
 
 		fs::create_dir_all(&import_directory_path)
-				.map_err(|e| FileIterationError::CantCreateDirectory(import_directory_path.clone()))?;
+			.map_err(|e| FileIterationError::CantCreateDirectory(import_directory_path.clone()))?;
 		let mut file_counter = 0;
 
 		for source_path in source_paths {
@@ -91,15 +91,15 @@ impl FileImport {
 
 			if is_mbox_file {
 				let file_buf_reader = fs::File::open(&source_path)
-						.map(BufReader::new)
-						.map_err(|_read_err| FileIterationError::FileReadError(source_path.clone()))?;
+					.map(BufReader::new)
+					.map_err(|_read_err| FileIterationError::FileReadError(source_path.clone()))?;
 				let msg_iterator = MessageIterator::new(file_buf_reader);
 
 				for parsed_message in msg_iterator {
 					let target_eml_file_path =
-							import_directory_path.join(file_counter.to_string() + ".eml");
+						import_directory_path.join(file_counter.to_string() + ".eml");
 					let parsed_message = parsed_message
-							.map_err(|_parse_err| FileIterationError::NotAValidEmailFile)?;
+						.map_err(|_parse_err| FileIterationError::NotAValidEmailFile)?;
 
 					fs::write(&target_eml_file_path, parsed_message.contents()).map_err(
 						|_write_e| FileIterationError::FileReadError(target_eml_file_path.clone()),
@@ -109,9 +109,9 @@ impl FileImport {
 				}
 			} else if is_eml_file {
 				let target_eml_file_path =
-						import_directory_path.join(file_counter.to_string() + ".eml");
+					import_directory_path.join(file_counter.to_string() + ".eml");
 				fs::copy(&source_path, &target_eml_file_path)
-						.map_err(|_| FileIterationError::FileReadError(target_eml_file_path.clone()))?;
+					.map_err(|_| FileIterationError::FileReadError(target_eml_file_path.clone()))?;
 
 				file_counter += 1;
 			} else {
@@ -130,20 +130,20 @@ impl FileImport {
 		let eml = self.next_eml_contents()?;
 
 		let parsed_message = self
-				.message_parser
-				.parse(eml.file_content.as_slice())
-				.ok_or(FileIterationError::NotAValidEmailFile)?;
+			.message_parser
+			.parse(eml.file_content.as_slice())
+			.ok_or(FileIterationError::NotAValidEmailFile)?;
 		let importable_mail =
-				ImportableMail::convert_from(&parsed_message, Some(eml.eml_file_path))
-						.map_err(|_e| FileIterationError::NoImportableMail)?;
+			ImportableMail::convert_from(&parsed_message, Some(eml.eml_file_path))
+				.map_err(|_e| FileIterationError::NoImportableMail)?;
 		Ok(importable_mail)
 	}
 
 	pub fn delete_dir_if_exists(target_dir: &PathBuf) -> std::io::Result<()> {
 		target_dir
-				.exists()
-				.then(|| fs::remove_dir_all(target_dir))
-				.unwrap_or(Ok(()))
+			.exists()
+			.then(|| fs::remove_dir_all(target_dir))
+			.unwrap_or(Ok(()))
 	}
 	pub fn make_import_directory(config_directory: &str, mailbox_id: &str) -> PathBuf {
 		[
@@ -151,8 +151,8 @@ impl FileImport {
 			"current_imports".into(),
 			mailbox_id.to_string(),
 		]
-				.iter()
-				.collect()
+		.iter()
+		.collect()
 	}
 }
 
@@ -193,25 +193,25 @@ mod test {
 			let mut msg_path = src_folder.clone();
 			msg_path.push("msg.eml");
 			File::create(&msg_path)
-					.unwrap()
-					.write_all(EML_MSG.as_bytes())
-					.unwrap();
+				.unwrap()
+				.write_all(EML_MSG.as_bytes())
+				.unwrap();
 			let mut reply_path = src_folder.clone();
 			reply_path.push("reply.eml");
 			File::create(&reply_path)
-					.unwrap()
-					.write_all(EML_REPLY.as_bytes())
-					.unwrap();
+				.unwrap()
+				.write_all(EML_REPLY.as_bytes())
+				.unwrap();
 			let mut mbox_path = src_folder.clone();
 			mbox_path.push("mbox.mbox");
 			let mbox_contents = "From vr@tuta.io  Fri Feb  2 20:57:39 2024\n".to_string()
-					+ EML_MSG
-					+ "\n\nFrom freepancakes@tutanota.com  Fri Feb  2 21:03:27 2024\n"
-					+ EML_REPLY;
+				+ EML_MSG
+				+ "\n\nFrom freepancakes@tutanota.com  Fri Feb  2 21:03:27 2024\n"
+				+ EML_REPLY;
 			File::create(&mbox_path)
-					.unwrap()
-					.write_all(mbox_contents.as_bytes())
-					.unwrap();
+				.unwrap()
+				.write_all(mbox_contents.as_bytes())
+				.unwrap();
 			Setup {
 				src_folder,
 				config_directory,
@@ -228,8 +228,8 @@ mod test {
 				Err(_e) => println!("can't delete src_folder {:?}", self.src_folder),
 			}
 			fs::remove_dir_all(self.config_directory.clone())
-					.map_err(|_e| println!("can't delete target_folder {:?}", self.config_directory))
-					.unwrap();
+				.map_err(|_e| println!("can't delete target_folder {:?}", self.config_directory))
+				.unwrap();
 		}
 	}
 
@@ -261,7 +261,7 @@ Yeah, but I really did not like it. Had higher hopes after watching that Simpson
 			"someId",
 			vec![s.msg_path.clone(), s.reply_path.clone()].into_iter(),
 		)
-				.unwrap();
+		.unwrap();
 		let eml_files = Importer::eml_files_in_directory(&import_directory).unwrap();
 		if let [msg_path, reply_path] = eml_files.as_slice() {
 			verify_file_contents(
@@ -287,7 +287,7 @@ Yeah, but I really did not like it. Had higher hopes after watching that Simpson
 			"anotherId",
 			vec![s.msg_path.clone(), s.reply_path.clone()].into_iter(),
 		)
-				.unwrap();
+		.unwrap();
 
 		let eml_files = Importer::eml_files_in_directory(&import_directory).unwrap();
 		if let [msg_path, reply_path] = eml_files.as_slice() {
@@ -317,10 +317,10 @@ Yeah, but I really did not like it. Had higher hopes after watching that Simpson
 				s.mbox_path.clone(),
 				s.msg_path.clone(),
 			]
-					.into_iter(),
+			.into_iter(),
 		)
-				.unwrap();
-		let mut eml_files= Importer::eml_files_in_directory(&import_directory).unwrap();
+		.unwrap();
+		let mut eml_files = Importer::eml_files_in_directory(&import_directory).unwrap();
 		eml_files.sort();
 		if let [reply_path, mbox_msg_path, mbox_reply_path, msg_path] = eml_files.as_slice() {
 			verify_file_contents(
@@ -367,8 +367,8 @@ Yeah, but I really did not like it. Had higher hopes after watching that Simpson
 			"current_imports".to_string(),
 			mailbox_id.to_string(),
 		]
-				.iter()
-				.collect();
+		.iter()
+		.collect();
 
 		fs::create_dir_all(&import_dir).unwrap();
 
