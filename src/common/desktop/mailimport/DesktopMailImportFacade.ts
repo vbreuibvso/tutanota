@@ -2,18 +2,20 @@ import { ImporterApi, TutaCredentials } from "../../../../packages/node-mimimi/d
 import { UnencryptedCredentials } from "../../native/common/generatedipc/UnencryptedCredentials.js"
 import { CredentialType } from "../../misc/credentials/CredentialType.js"
 import { NativeMailImportFacade } from "../../native/common/generatedipc/NativeMailImportFacade"
+import { defer, DeferredObject } from "@tutao/tutanota-utils"
+import { ElectronExports } from "../ElectronExportTypes.js"
+
+type Listener = DeferredObject<string>["resolve"]
 
 export class DesktopMailImportFacade implements NativeMailImportFacade {
 	private configDirectory: string
 	private readonly importerApis: Map<string, ImporterApi> = new Map()
+	private readonly currentListeners: Map<string, Array<Listener>> = new Map()
 
-	constructor(configDirectory: string) {
+	constructor(electron: ElectronExports) {
 		ImporterApi.initLog()
-		this.configDirectory = configDirectory
-	}
-
-	async deinitLogger() {
-		ImporterApi.deinitLog()
+		electron.app.on("before-quit", () => ImporterApi.deinitLog())
+		this.configDirectory = electron.app.getPath("userData")
 	}
 
 	async getResumableImport(
@@ -26,6 +28,8 @@ export class DesktopMailImportFacade implements NativeMailImportFacade {
 		const importerApi = await ImporterApi.getResumableImport(mailboxId, this.configDirectory, targetOwnerGroup, tutaCredentials)
 
 		if (importerApi != null) {
+			importerApi.setErrorHook((err: string) => this.processMimimiMessage(mailboxId, err))
+			console.log("set a hook")
 			this.importerApis.set(mailboxId, importerApi)
 			const { listId, elementId } = importerApi.getImportStateId()
 			return [listId, elementId]
@@ -56,6 +60,8 @@ export class DesktopMailImportFacade implements NativeMailImportFacade {
 				filePaths.slice(),
 				this.configDirectory,
 			)
+			importerApi.setErrorHook((err: string) => this.processMimimiMessage(mailboxId, err))
+			console.log("set a hook")
 			this.importerApis.set(mailboxId, importerApi)
 			const { listId, elementId } = importerApi.getImportStateId()
 			return [listId, elementId]
@@ -70,6 +76,29 @@ export class DesktopMailImportFacade implements NativeMailImportFacade {
 		await importerApi.setProgressAction(progressAction)
 	}
 
+	async getNextLocalEvent(mailboxId: string): Promise<string> {
+		console.log("setting up a callback")
+		const { promise, resolve } = defer<string>()
+		const listeners = this.currentListeners.get(mailboxId)
+		if (listeners != null) {
+			listeners.push(resolve)
+		} else {
+			const newListeners = [resolve]
+			this.currentListeners.set(mailboxId, newListeners)
+		}
+		return promise
+	}
+
+	private processMimimiMessage(mailboxId: string, error: string) {
+		console.log("calling a hook")
+		let listeners = this.currentListeners.get(mailboxId)
+		if (listeners != null) {
+			for (const listener of listeners) {
+				listener(error)
+			}
+		}
+	}
+
 	private createTutaCredentials(unencTutaCredentials: UnencryptedCredentials, apiUrl: string) {
 		const tutaCredentials: TutaCredentials = {
 			accessToken: unencTutaCredentials?.accessToken,
@@ -77,14 +106,14 @@ export class DesktopMailImportFacade implements NativeMailImportFacade {
 			encryptedPassphraseKey: unencTutaCredentials.encryptedPassphraseKey ? Array.from(unencTutaCredentials.encryptedPassphraseKey) : [],
 			login: unencTutaCredentials.credentialInfo.login,
 			userId: unencTutaCredentials.credentialInfo.userId,
-			apiUrl: apiUrl,
+			apiUrl,
 			clientVersion: env.versionNumber,
 		}
 		return tutaCredentials
 	}
 
 	/// once importState is in final status: Cancel, Finish remove it from map
-	// todo: where to call this from?
+	// todo: where to call this from? -> mimimi, somehow
 	private markFinalImportState(mailboxId: string) {
 		this.importerApis.delete(mailboxId)
 	}

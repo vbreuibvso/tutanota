@@ -58,6 +58,15 @@
 				}
 			],
 			"ret": "void"
+		},
+		"getNextLocalEvent": {
+			"doc": "await to receive any errors and import state changes that must be handled locally",
+			"arg": [
+				{
+					"mailboxId": "string"
+				}
+			],
+			"ret": "string"
 		}
 	}
 }

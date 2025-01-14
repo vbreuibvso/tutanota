@@ -28,6 +28,10 @@ export class NativeMailImportFacadeReceiveDispatcher {
 				const importProgressAction: number = arg[1]
 				return this.facade.setProgressAction(mailboxId, importProgressAction)
 			}
+			case "getNextLocalEvent": {
+				const mailboxId: string = arg[0]
+				return this.facade.getNextLocalEvent(mailboxId)
+			}
 		}
 	}
 }

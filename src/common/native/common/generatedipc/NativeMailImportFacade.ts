@@ -26,4 +26,9 @@ export interface NativeMailImportFacade {
 	 * Sets progress action for next import iteration
 	 */
 	setProgressAction(mailboxId: string, importProgressAction: number): Promise<void>
+
+	/**
+	 * await to receive any errors and import state changes that must be handled locally
+	 */
+	getNextLocalEvent(mailboxId: string): Promise<string>
 }

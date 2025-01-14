@@ -108,12 +108,8 @@ export class WindowManager {
 		await this.loadStartingBounds()
 		const w: ApplicationWindow = await this._newWindowFactory(noAutoLogin)
 		windows.unshift(w)
-		w.on("close", async () => {
+		w.on("close", () => {
 			this.saveBounds(w.getBounds())
-
-			if (windows.length === 1) {
-				await this.remoteBridge.denitImportFacadeLogger(w)
-			}
 		})
 			.on("closed", () => {
 				w.setUserId(null)

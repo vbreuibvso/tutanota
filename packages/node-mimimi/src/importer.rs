@@ -648,6 +648,13 @@ impl Importer {
             }
         };
 
+		let state_file_path = import_directory.join("import_mail_state");
+		fs::write(
+			state_file_path,
+			format!("{}/{}", remote_state_id.list_id, remote_state_id.element_id),
+		)
+		.map_err(ImportError::IOError)?;
+
         let import_essentials = ImportEssential {
             logged_in_sdk,
             target_owner_group,

@@ -9,7 +9,6 @@ import { CommonNativeFacadeSendDispatcher } from "../../native/common/generatedi
 import { DesktopCommonSystemFacade } from "../DesktopCommonSystemFacade.js"
 import { InterWindowEventFacadeSendDispatcher } from "../../native/common/generatedipc/InterWindowEventFacadeSendDispatcher.js"
 import { PerWindowSqlCipherFacade } from "../db/PerWindowSqlCipherFacade.js"
-import { NativeMailImportFacadeSendDispatcher } from "../../native/common/generatedipc/NativeMailImportFacadeSendDispatcher.js"
 
 export interface SendingFacades {
 	desktopFacade: DesktopFacade
@@ -67,10 +66,5 @@ export class RemoteBridge {
 
 	unsubscribe(ipc: { removeHandler: (channel: string) => void }) {
 		ipc.removeHandler(primaryIpcConfig.renderToMainEvent)
-	}
-
-	async denitImportFacadeLogger(win: ApplicationWindow) {
-		let dispatcher = this.dispatcherFactory(win).dispatcher
-		return dispatcher.dispatch("NativeMailImportFacade", "deinitLogger", [])
 	}
 }

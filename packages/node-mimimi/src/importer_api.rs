@@ -2,6 +2,7 @@ use super::importer::{
 	ImportError, ImportMailStateId, ImportProgressAction, ImportStatus, Importer, IterationError,
 };
 use crate::importer::file_reader::FileImport;
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi::Env;
 use std::future::{Future, IntoFuture};
 use std::path::PathBuf;
@@ -113,6 +114,14 @@ impl ImporterApi {
 			.set_next_progress_action(next_progress_action)
 			.await;
 
+		if let Some(previous_loop_handle) = std::mem::take(&mut self.importer_loop_handle) {
+			previous_loop_handle
+				.await
+				.expect("Can not join the task handle");
+		};
+
+		// todo check if import was finished already?
+
 		match next_progress_action {
 			ImportProgressAction::Continue => {
 				self.importer
@@ -135,6 +144,21 @@ impl ImporterApi {
 	}
 
 	#[napi]
+	pub unsafe fn set_error_hook(
+		&mut self,
+		hook: ThreadsafeFunction<String, napi::threadsafe_function::ErrorStrategy::Fatal>,
+	) -> napi::Result<()> {
+		println!("received hook");
+		let s = hook.call(
+			"someErorr".to_string(),
+			ThreadsafeFunctionCallMode::NonBlocking,
+		);
+		// todo: check call status
+		println!("called hook {:?}", s);
+		Ok(())
+	}
+
+	#[napi]
 	pub fn init_log(env: Env) {
 		// this is in a separate fn because Env isn't Send, so can't be used in async fn.
 		crate::logging::console::Console::init(env)
@@ -152,7 +176,10 @@ impl ImporterApi {
 		napi::tokio::task::spawn(async move {
 			let import_res = importer.start_stateful_import().await;
 
-			if let Err(err_to_send_to_js) = import_res {}
+			if let Err(err_to_send_to_js) = import_res {
+			} else {
+				eprintln!(">>>> exit with ok. tokio task complete")
+			}
 		})
 	}
 }

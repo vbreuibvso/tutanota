@@ -14,6 +14,7 @@ import { ProgressMonitor } from "../../../common/api/common/utils/ProgressMonito
 import { ProgrammingError } from "../../../common/api/common/error/ProgrammingError.js"
 import { EntityUpdateData, isUpdateForTypeRef } from "../../../common/api/common/utils/EntityUpdateUtils"
 import { EventController } from "../../../common/api/main/EventController"
+import { Dialog } from "../../../common/gui/base/Dialog.js"
 
 // keep in sync with napi binding.d.cts
 export const enum ImportProgressAction {
@@ -76,9 +77,10 @@ export class MailImporter {
 
 	async initImportMailStates(): Promise<void> {
 		const importFacade = assertNotNull(this.nativeMailImportFacade)
+		const mailbox = await this.getMailbox()
+		this.listenForError(importFacade, mailbox._id)
 
 		if (this.activeImportId === null) {
-			const mailbox = await this.getMailbox()
 			const mailOwnerGroupId = assertNotNull(mailbox._ownerGroup)
 			const userId = this.loginController.getUserController().userId
 			const unencryptedCredentials = assertNotNull(await this.credentialsProvider?.getDecryptedCredentialsByUserId(userId))
@@ -93,25 +95,42 @@ export class MailImporter {
 			const remoteStatus = parseInt(importMailState.status) as ImportStatus
 
 			switch (remoteStatus) {
-				case ImportStatus.Canceled | ImportStatus.Finished:
+				case ImportStatus.Canceled:
+				case ImportStatus.Finished:
+					// todo: clean this up
 					throw new Error("import state on server is canceled but we still have id in filesystem. remove this state from file?")
 
-				case ImportStatus.Paused | ImportStatus.Running:
+				case ImportStatus.Paused:
+				case ImportStatus.Running:
 					this.uiStatus = importStatusToUiImportStatus(remoteStatus)
 					const doneCount = parseInt(importMailState.failedMails) + parseInt(importMailState.successfulMails)
 					const totalCount = parseInt(importMailState.totalMails)
 					this.updateProgressMonitorTotalWork(totalCount)
 					this.progressMonitor?.totalWorkDone(doneCount)
+					m.redraw()
 			}
 		}
 
 		const importMailStatesCollection = await this.entityClient.loadAll(ImportMailStateTypeRef, (await this.getMailbox()).mailImportStates)
 		for (const importMailState of importMailStatesCollection) {
-			if (importMailState._id != this.activeImportId) {
+			if (isSameId(importMailState._id, this.activeImportId)) {
 				this.updateFinalisedImport(elementIdPart(importMailState._id), importMailState)
 			}
 		}
 		m.redraw()
+	}
+
+	private async listenForError(importFacade: NativeMailImportFacade, mailboxId: string) {
+		while (true) {
+			console.log("listening to the next error")
+			const event = await importFacade.getNextLocalEvent(mailboxId)
+			this.handleError(event)
+		}
+	}
+
+	private handleError(msg: string) {
+		// todo!
+		Dialog.message(() => msg)
 	}
 
 	/**
