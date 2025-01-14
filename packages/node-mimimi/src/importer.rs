@@ -86,17 +86,17 @@ pub enum ImportStatus {
 }
 
 impl TryFrom<i64> for ImportStatus {
-    type Error = &'static str;
+	type Error = &'static str;
 
-    fn try_from(value: i64) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(ImportStatus::Running),
-            1 => Ok(ImportStatus::Paused),
-            2 => Ok(ImportStatus::Canceled),
-            3 => Ok(ImportStatus::Finished),
-            _ => Err("Unknown import status"),
-        }
-    }
+	fn try_from(value: i64) -> Result<Self, Self::Error> {
+		match value {
+			0 => Ok(ImportStatus::Running),
+			1 => Ok(ImportStatus::Paused),
+			2 => Ok(ImportStatus::Canceled),
+			3 => Ok(ImportStatus::Finished),
+			_ => Err("Unknown import status"),
+		}
+	}
 }
 
 /// A running import can be stopped or paused
@@ -171,12 +171,12 @@ impl ImportEssential {
 	};
 
 	pub async fn load_remote_state(&self) -> Result<ImportMailState, ApiCallError> {
-        self.logged_in_sdk
-            .mail_facade()
-            .get_crypto_entity_client()
-            .load::<ImportMailState, _>(&self.remote_state_id)
-            .await
-    }
+		self.logged_in_sdk
+			.mail_facade()
+			.get_crypto_entity_client()
+			.load::<ImportMailState, _>(&self.remote_state_id)
+			.await
+	}
 
 	pub(super) async fn update_remote_state(
 		&self,
@@ -599,10 +599,10 @@ impl Importer {
 		};
 
 		let state_file_path = import_directory.join(STATE_ID_FILE_NAME);
-        fs::write(
-            state_file_path,
-            format!("{}/{}", remote_state_id.list_id, remote_state_id.element_id),
-        )
+		fs::write(
+			state_file_path,
+			format!("{}/{}", remote_state_id.list_id, remote_state_id.element_id),
+		)
 		.map_err(|_| PreparationError::StateFileWriteFailed)?;
 
 		let import_essentials = ImportEssential {
@@ -622,6 +622,9 @@ impl Importer {
 		Ok(importer)
 	}
 
+	/// return `Ok(true)` if all mails are finished
+	/// 	   `Ok(false)` if we had no errors and can continue
+	///        `Err()` if something went wrong. we might still continue depending on the error.
 	pub async fn import_next_chunk(&self) -> Result<bool, ImportError> {
 		let import_essentials = &self.essentials;
 		let Self {
@@ -761,7 +764,7 @@ impl Importer {
 				action: _,
 				error: _,
 			} => Err(ImportError::GenericSdkError),
-			
+
 			ImportError::LocalImportStateIdInvalid => {
 				// since the id file itself is corrupted, we can not do anything about it,
 				// instead show user import directory and ask them to delete the directory manually
