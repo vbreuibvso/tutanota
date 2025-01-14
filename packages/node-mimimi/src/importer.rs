@@ -154,6 +154,20 @@ pub enum ImportStatus {
 	Finished = 3,
 }
 
+impl TryFrom<i64> for ImportStatus {
+    type Error = &'static str;
+
+    fn try_from(value: i64) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(ImportStatus::Running),
+            1 => Ok(ImportStatus::Paused),
+            2 => Ok(ImportStatus::Canceled),
+            3 => Ok(ImportStatus::Finished),
+            _ => Err("Unknown import status"),
+        }
+    }
+}
+
 /// A running import can be stopped or paused
 #[cfg_attr(feature = "javascript", napi_derive::napi)]
 #[cfg_attr(not(feature = "javascript"), derive(Clone))]
@@ -225,13 +239,13 @@ impl ImportEssential {
 		))),
 	};
 
-	async fn load_remote_state(&self) -> Result<ImportMailState, ApiCallError> {
-		self.logged_in_sdk
-			.mail_facade()
-			.get_crypto_entity_client()
-			.load::<ImportMailState, _>(&self.remote_state_id)
-			.await
-	}
+	pub async fn load_remote_state(&self) -> Result<ImportMailState, ApiCallError> {
+        self.logged_in_sdk
+            .mail_facade()
+            .get_crypto_entity_client()
+            .load::<ImportMailState, _>(&self.remote_state_id)
+            .await
+    }
 
 	pub(super) async fn update_remote_state(
 		&self,
@@ -644,12 +658,12 @@ impl Importer {
 			},
 		};
 
-		let state_file_path = import_directory.join("import_mail_state");
-		fs::write(
-			state_file_path,
-			format!("{}/{}", remote_state_id.list_id, remote_state_id.element_id),
-		)
-		.map_err(ImportError::IOError)?;
+        let state_file_path = import_directory.join("import_mail_state");
+        fs::write(
+            state_file_path,
+            format!("{}/{}", remote_state_id.list_id, remote_state_id.element_id),
+        )
+            .map_err(ImportError::IOError)?;
 
 		let import_essentials = ImportEssential {
 			logged_in_sdk,

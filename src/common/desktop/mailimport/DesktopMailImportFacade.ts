@@ -1,4 +1,4 @@
-import { ImporterApi, TutaCredentials } from "../../../../packages/node-mimimi/dist/binding.cjs"
+import { ImportStatus, ImporterApi, TutaCredentials } from "../../../../packages/node-mimimi/dist/binding.cjs"
 import { UnencryptedCredentials } from "../../native/common/generatedipc/UnencryptedCredentials.js"
 import { CredentialType } from "../../misc/credentials/CredentialType.js"
 import { NativeMailImportFacade } from "../../native/common/generatedipc/NativeMailImportFacade"
@@ -53,24 +53,32 @@ export class DesktopMailImportFacade implements NativeMailImportFacade {
 		apiUrl: string,
 	): Promise<readonly [string, string]> {
 		const tutaCredentials = this.createTutaCredentials(unencryptedTutaCredentials, apiUrl)
+
 		if (this.importerApis.has(mailboxId)) {
-			// todo: error type?
-			throw new Error("already have a running import for this mailbox")
-		} else {
-			const importerApi = await ImporterApi.prepareNewImport(
-				mailboxId,
-				tutaCredentials,
-				targetOwnerGroup,
-				[targetMailset[0], targetMailset[1]],
-				filePaths.slice(),
-				this.configDirectory,
-			)
-			importerApi.setErrorHook((err: string) => this.processMimimiMessage(mailboxId, err))
-			console.log("set a hook")
-			this.importerApis.set(mailboxId, importerApi)
-			const { listId, elementId } = importerApi.getImportStateId()
-			return [listId, elementId]
+			const importerApi = await ImporterApi.getResumableImport(mailboxId, this.configDirectory, targetOwnerGroup, tutaCredentials)
+			if (importerApi) {
+				const importStatus = await importerApi.getImportStatus()
+				if (importStatus != null && (importStatus == ImportStatus.Finished || importStatus == ImportStatus.Canceled)) {
+					this.markFinalImportState(mailboxId)
+				} else {
+					throw new Error("an import is already running for this mailbox")
+				}
+			}
 		}
+
+		const importerApi = await ImporterApi.prepareNewImport(
+			mailboxId,
+			tutaCredentials,
+			targetOwnerGroup,
+			[targetMailset[0], targetMailset[1]],
+			filePaths.slice(),
+			this.configDirectory,
+		)
+		importerApi.setErrorHook((err: string) => this.processMimimiMessage(mailboxId, err))
+		this.importerApis.set(mailboxId, importerApi)
+		const { listId, elementId } = importerApi.getImportStateId()
+
+		return [listId, elementId]
 	}
 
 	async setProgressAction(mailboxId: string, progressAction: number): Promise<void> {
@@ -117,8 +125,6 @@ export class DesktopMailImportFacade implements NativeMailImportFacade {
 		return tutaCredentials
 	}
 
-	/// once importState is in final status: Cancel, Finish remove it from map
-	// todo: where to call this from? -> mimimi, somehow
 	private markFinalImportState(mailboxId: string) {
 		this.importerApis.delete(mailboxId)
 	}
