@@ -199,7 +199,7 @@ export class MailImportSettingsViewer implements UpdatableSettingsViewer {
 		if (this.mailImporter().shouldRenderPauseButton()) {
 			buttonControls.push(m(IconButton, pauseMailImportIconButtonAttrs))
 		}
-		if (this.mailImporter().shouldShowResumeButton()) {
+		if (this.mailImporter().shouldRenderResumeButton()) {
 			buttonControls.push(m(IconButton, resumeMailImportIconButtonAttrs))
 		}
 		if (this.mailImporter().shouldRenderCancelButton()) {
