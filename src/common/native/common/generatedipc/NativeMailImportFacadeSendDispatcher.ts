@@ -16,7 +16,7 @@ export class NativeMailImportFacadeSendDispatcher implements NativeMailImportFac
 	async setProgressAction(...args: Parameters<NativeMailImportFacade["setProgressAction"]>) {
 		return this.transport.invokeNative("ipc", ["NativeMailImportFacade", "setProgressAction", ...args])
 	}
-	async getNextLocalEvent(...args: Parameters<NativeMailImportFacade["getNextLocalEvent"]>) {
-		return this.transport.invokeNative("ipc", ["NativeMailImportFacade", "getNextLocalEvent", ...args])
+	async setAsyncErrorHook(...args: Parameters<NativeMailImportFacade["setAsyncErrorHook"]>) {
+		return this.transport.invokeNative("ipc", ["NativeMailImportFacade", "setAsyncErrorHook", ...args])
 	}
 }

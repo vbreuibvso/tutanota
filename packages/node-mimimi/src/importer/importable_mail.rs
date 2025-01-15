@@ -668,7 +668,7 @@ impl TryFrom<ImapMail> for ImportableMail {
 			.parse(rfc822_full.as_slice())
 			.ok_or(MailParseError::InvalidMimeMessage)?;
 
-		let mut importable_mail = Self::convert_from(&imap_mail, None).unwrap();
+		let mut importable_mail = Self::convert_from(&imap_mail, None);
 
 		// example:
 		// add more details from imap if given,

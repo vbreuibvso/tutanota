@@ -14,6 +14,7 @@ import { ProgrammingError } from "../../../common/api/common/error/ProgrammingEr
 import { EntityUpdateData, isUpdateForTypeRef } from "../../../common/api/common/utils/EntityUpdateUtils"
 import { EventController } from "../../../common/api/main/EventController"
 import { Dialog } from "../../../common/gui/base/Dialog.js"
+import { MailImportError } from "../../../common/api/common/error/MailImportError.js"
 
 // keep in sync with napi binding.d.cts
 export const enum ImportProgressAction {
@@ -67,8 +68,15 @@ export class MailImporter {
 			const userId = this.loginController.getUserController().userId
 			const unencryptedCredentials = assertNotNull(await this.credentialsProvider?.getDecryptedCredentialsByUserId(userId))
 			const apiUrl = getApiBaseUrl(this.domainConfigProvider.getCurrentDomainConfig())
-			this.activeImportId = await importFacade.getResumableImport(mailbox._id, mailOwnerGroupId, unencryptedCredentials, apiUrl)
-
+			try {
+				this.activeImportId = await importFacade.getResumableImport(mailbox._id, mailOwnerGroupId, unencryptedCredentials, apiUrl)
+			} catch (e) {
+				if (e instanceof MailImportError) {
+					console.error("some error", e.data)
+				} else {
+					throw e
+				}
+			}
 			this.listenForError(importFacade, mailbox._id)
 		}
 
@@ -107,17 +115,25 @@ export class MailImporter {
 		return parseInt(importMailState.status) == ImportStatus.Finished || parseInt(importMailState.status) == ImportStatus.Canceled
 	}
 
+	/// start a loop that listens to an arbitrary amount of errors that can happen during the import process.
 	private async listenForError(importFacade: NativeMailImportFacade, mailboxId: string) {
 		while (true) {
-			console.log("listening to the next error")
-			const event = await importFacade.getNextLocalEvent(mailboxId)
-			this.handleError(event)
+			try {
+				await importFacade.setAsyncErrorHook(mailboxId)
+			} catch (e) {
+				if (e instanceof MailImportError) {
+					this.handleError(e)
+					continue
+				}
+				throw e
+			}
+			throw new ProgrammingError("setAsyncErrorHook should never complete normally!")
 		}
 	}
 
-	private handleError(msg: string) {
+	private handleError(msg: MailImportError) {
 		// todo!
-		Dialog.message(() => msg)
+		Dialog.message(() => msg.message)
 	}
 
 	/**
@@ -143,7 +159,15 @@ export class MailImporter {
 		this.startProgressEstimation()
 		m.redraw()
 
-		this.activeImportId = await importFacade.prepareNewImport(mailboxId, mailOwnerGroupId, targetFolder._id, filePaths, unencryptedCredentials, apiUrl)
+		try {
+			this.activeImportId = await importFacade.prepareNewImport(mailboxId, mailOwnerGroupId, targetFolder._id, filePaths, unencryptedCredentials, apiUrl)
+		} catch (e) {
+			if (e instanceof MailImportError) {
+				console.error("some error", e.data)
+			} else {
+				throw e
+			}
+		}
 		const nativeImportFacade = assertNotNull(this.nativeMailImportFacade)
 		await nativeImportFacade.setProgressAction(mailboxId, ImportProgressAction.Continue)
 	}

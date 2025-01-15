@@ -1,5 +1,6 @@
 use crate::importer::errors::{FileIterationError, PreparationError};
 use crate::importer::importable_mail::ImportableMail;
+use crate::importer::STATE_ID_FILE_NAME;
 use mail_parser::mailbox::mbox::MessageIterator;
 use mail_parser::MessageParser;
 use std::fs;
@@ -102,7 +103,9 @@ impl FileImport {
 
 				file_counter += 1;
 			} else {
-				Err(PreparationError::UnsupportedFile)?
+				// we're ignoring files that are not eml or mbox because we try to
+				// configure the dialog to only allow selecting those.
+				// user probably uses some weird setup.
 			}
 		}
 
@@ -124,11 +127,19 @@ impl FileImport {
 			.ok_or(FileIterationError::ParseError(eml.eml_file_path))
 	}
 
+	/// recursively deletes the given directory and its contents
 	pub fn delete_dir_if_exists(target_dir: &PathBuf) -> std::io::Result<()> {
 		target_dir
 			.exists()
 			.then(|| fs::remove_dir_all(target_dir))
 			.unwrap_or(Ok(()))
+	}
+
+	/// makes a best-effort attempt to make the state in the given target directory
+	/// look like there is no ongoing import anymore, but will ignore errors.
+	pub fn clean_import_directory(import_dir: &PathBuf) {
+		fs::remove_file(import_dir.join(STATE_ID_FILE_NAME)).ok();
+		FileImport::delete_dir_if_exists(import_dir).ok();
 	}
 	pub fn make_import_directory(config_directory: &str, mailbox_id: &str) -> PathBuf {
 		[
@@ -362,7 +373,7 @@ Yeah, but I really did not like it. Had higher hopes after watching that Simpson
 		fs::write(&state_file, "list-id/element-id").unwrap();
 		fs::write(leftover_eml.as_path(), "sample mail").unwrap();
 
-		let result = Importer::existing_import(&import_dir).unwrap();
+		let result = Importer::get_existing_import_id(&import_dir).unwrap();
 		assert_eq!(
 			result,
 			Some(IdTupleGenerated::new(

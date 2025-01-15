@@ -2,76 +2,73 @@ use crate::importer::importable_mail::MailParseError;
 use std::path::PathBuf;
 use tutasdk::ApiCallError;
 
-/// Error that can happen when we are inside the importer loop
+#[napi_derive::napi(string_enum)]
 #[derive(Debug)]
-pub enum ImportError {
-	SdkError {
-		// action we were trying to perform on sdk
-		action: &'static str,
-		// actual error sdk returned
-		error: ApiCallError,
-	},
+pub enum ImportErrorKind {
+	SdkError,
 	/// import feature is not available for this user
 	NoImportFeature,
 	/// Blob responded with empty server url list
 	EmptyBlobServerList,
-	/// the element ID of the current import state directory is missing or not a valid ID
-	LocalImportStateIdInvalid,
 	/// Error while iterating through import source
-	IterationError(IterationError),
+	IterationError,
 	/// Some mail was too big
 	TooBigChunk,
 	/// Error that occured when deleting a file
-	FileDeletionError(std::io::Error, PathBuf),
+	FileDeletionError,
 	/// Generic counterpart for SdkError
 	// note: do not throw this manually
 	GenericSdkError,
 }
 
+/// needed because napi_rs doesn't support structured enums yet
+#[napi_derive::napi(object)]
+#[derive(Debug)]
+pub struct AsyncMailImportError {
+	pub kind: ImportErrorKind,
+	pub path: Option<String>,
+}
+
 /// Errors that can happen when we are preparing for an import.
 /// i.e before we enter importer loop
-#[napi_derive::napi]
+#[napi_derive::napi(string_enum)]
 #[repr(u8)]
 #[cfg_attr(test, derive(Debug))]
 pub enum PreparationError {
 	/// import state file does not exist at all
-	NoStateFile = 0,
+	NoStateFile,
 	/// import state file exists, but it's content can not be deserialized to valid idTuple
-	MalformedStateFile = 1,
+	MalformedStateFile,
 	/// Can not create a native Rest client
-	NoNativeRestClient = 2,
+	NoNativeRestClient,
 	/// Can not log in through sdk
-	CanNotLoginToSdk = 3,
+	CanNotLoginToSdk,
 	/// Can not create a sdk
-	CannotCreateSdk = 4,
+	CannotCreateSdk,
 	/// some error occurred while preparing import directory
-	ImportDirectoryPreparation = 5,
-	/// Can not create valid credential from given raw input
-	CredentialValidationError = 6,
+	ImportDirectoryPreparation,
 	/// Error when trying to resume the session passed from client
-	LoginError = 7,
+	LoginError,
 	/// Can not read all the eml files in import directory
-	FailedToReadEmls = 8,
+	FailedToReadEmls,
 	/// can not get mail group key from sdk
-	NoMailGroupKey = 9,
+	NoMailGroupKey,
 	/// can not load remote state
-	CannotLoadRemoteState = 10,
-	/// No import feature
-	NoImportFeature = 11,
+	CannotLoadRemoteState,
+	/// No import feature on the server (it's disabled)
+	NoImportFeature,
 	/// Can not write to state file
-	StateFileWriteFailed = 12,
+	StateFileWriteFailed,
 	/// Can not create directory to keep selected files
-	CanNotCreateImportDir = 13,
+	CanNotCreateImportDir,
 	/// Can not delete import directory
-	CanNotDeleteImportDir = 14,
+	CanNotDeleteImportDir,
 	/// Can not read one of selected file
-	FileReadError = 15,
+	FileReadError,
 	/// Can not parse file content to Message format
-	NotAValidEmailFile = 16,
+	NotAValidEmailFile,
 	/// Can not write eml file to import dir
-	EmlFileWriteFailure = 17,
-	/// Not a valid eml or mbox file
-	UnsupportedFile = 18,
+	EmlFileWriteFailure,
 }
 
 /// Unification of Imap & File IterationError
@@ -109,8 +106,8 @@ pub enum FileIterationError {
 }
 
 #[cfg(feature = "javascript")]
-impl From<ImportError> for napi::Error {
-	fn from(import_err: ImportError) -> Self {
+impl From<AsyncMailImportError> for napi::Error {
+	fn from(import_err: AsyncMailImportError) -> Self {
 		napi::Error::from_reason(format!("{:?}", import_err))
 	}
 }
@@ -118,12 +115,49 @@ impl From<ImportError> for napi::Error {
 #[cfg(feature = "javascript")]
 impl From<PreparationError> for napi::Error {
 	fn from(prep_err: PreparationError) -> Self {
-		napi::Error::from_reason((prep_err as u8).to_string())
+		let code = match prep_err {
+			PreparationError::NoStateFile => "NoStateFile",
+			PreparationError::MalformedStateFile => "MalformedStateFile",
+			PreparationError::NoNativeRestClient => "NoNativeRestClient",
+			PreparationError::CanNotLoginToSdk => "CanNotLoginToSdk",
+			PreparationError::CannotCreateSdk => "CannotCreateSdk",
+			PreparationError::ImportDirectoryPreparation => "ImportDirectoryPreparation",
+			PreparationError::LoginError => "LoginError",
+			PreparationError::FailedToReadEmls => "FailedToReadEmls",
+			PreparationError::NoMailGroupKey => "NoMailGroupKey",
+			PreparationError::CannotLoadRemoteState => "CannotLoadRemoteState",
+			PreparationError::NoImportFeature => "NoImportFeature",
+			PreparationError::StateFileWriteFailed => "StateFileWriteFailed",
+			PreparationError::CanNotCreateImportDir => "CanNotCreateImportDir",
+			PreparationError::CanNotDeleteImportDir => "CanNotDeleteImportDir",
+			PreparationError::FileReadError => "FileReadError",
+			PreparationError::NotAValidEmailFile => "NotAValidEmailFile",
+			PreparationError::EmlFileWriteFailure => "EmlFileWriteFailure",
+		};
+
+		napi::Error::from_reason(code)
 	}
 }
 
-impl ImportError {
+impl AsyncMailImportError {
 	pub fn sdk(action: &'static str, error: ApiCallError) -> Self {
-		Self::SdkError { action, error }
+		log::error!("ImportError::SdkError: {action} ({error})");
+		Self {
+			kind: ImportErrorKind::SdkError,
+			path: None,
+		}
+	}
+
+	pub fn with_path(kind: ImportErrorKind, path: PathBuf) -> Self {
+		Self {
+			kind,
+			path: Some(path.to_string_lossy().to_string()),
+		}
+	}
+}
+
+impl From<ImportErrorKind> for AsyncMailImportError {
+	fn from(kind: ImportErrorKind) -> Self {
+		Self { kind, path: None }
 	}
 }

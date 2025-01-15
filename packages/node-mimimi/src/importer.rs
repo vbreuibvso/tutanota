@@ -21,7 +21,8 @@ use tutasdk::crypto::randomizer_facade::RandomizerFacade;
 use tutasdk::entities::generated::sys::{BlobReferenceTokenWrapper, StringWrapper};
 
 use crate::importer::errors::{
-	FileIterationError, ImapIterationError, ImportError, IterationError, PreparationError,
+	AsyncMailImportError, FileIterationError, ImapIterationError, ImportErrorKind, IterationError,
+	PreparationError,
 };
 use crate::importer_api::TutaCredentials;
 use tutasdk::entities::generated::tutanota::{
@@ -47,7 +48,7 @@ pub const MAX_REQUEST_SIZE: usize = 1024 * 1024 * 8;
 #[cfg(test)]
 pub const MAX_REQUEST_SIZE: usize = 1024 * 5;
 
-const STATE_ID_FILE_NAME: &str = "import_mail_state";
+pub(super) const STATE_ID_FILE_NAME: &str = "import_mail_state";
 
 // We need this type because IdTupleGenerated cannot be converted to a napi value.
 #[cfg_attr(feature = "javascript", napi_derive::napi(object))]
@@ -181,11 +182,11 @@ impl ImportEssential {
 	pub(super) async fn update_remote_state(
 		&self,
 		updater: impl Fn(&mut ImportMailState),
-	) -> Result<(), ImportError> {
+	) -> Result<(), AsyncMailImportError> {
 		let mut server_state = self
 			.load_remote_state()
 			.await
-			.map_err(|e| ImportError::sdk("getting remote import state", e))?;
+			.map_err(|e| AsyncMailImportError::sdk("getting remote import state", e))?;
 
 		updater(&mut server_state);
 
@@ -194,13 +195,13 @@ impl ImportEssential {
 			.get_crypto_entity_client()
 			.update_instance(server_state)
 			.await
-			.map_err(|e| ImportError::sdk("update remote import state", e))
+			.map_err(|e| AsyncMailImportError::sdk("update remote import state", e))
 	}
 
 	async fn upload_attachments_for_chunk(
 		&self,
 		importable_chunk: Vec<AttachmentUploadData>,
-	) -> Result<Vec<KeyedImportMailData>, ImportError> {
+	) -> Result<Vec<KeyedImportMailData>, AsyncMailImportError> {
 		let mut upload_data_per_mail: Vec<(Vec<FileData>, Vec<ImportableMailAttachmentMetaData>)> =
 			Vec::with_capacity(importable_chunk.len());
 		let attachments_count_per_mail: Vec<usize> = importable_chunk
@@ -267,7 +268,7 @@ impl ImportEssential {
 				attachments_file_data_flattened,
 			)
 			.await
-			.map_err(|e| ImportError::sdk("fail to upload multiple attachments", e))?;
+			.map_err(|e| AsyncMailImportError::sdk("fail to upload multiple attachments", e))?;
 
 		// reference mails and received reference tokens, by using the attachments count per mail
 		let mut all_reference_tokens_per_mail: Vec<Vec<Vec<BlobReferenceTokenWrapper>>> = vec![];
@@ -322,14 +323,14 @@ impl ImportEssential {
 	async fn make_serialized_chunk(
 		&self,
 		importable_chunk: Vec<KeyedImportMailData>,
-	) -> Result<(ImportMailPostIn, GenericAesKey), ImportError> {
+	) -> Result<(ImportMailPostIn, GenericAesKey), AsyncMailImportError> {
 		let mut serialized_imports = Vec::with_capacity(importable_chunk.len());
 
 		for unit_import in importable_chunk {
 			let serialized_import = self
 				.logged_in_sdk
 				.serialize_instance_to_json(unit_import.import_mail_data, unit_import.session_key)
-				.map_err(|e| ImportError::sdk("serializing instance to json", e))?;
+				.map_err(|e| AsyncMailImportError::sdk("serializing instance to json", e))?;
 			let wrapped_import_data = StringWrapper {
 				_id: Some(Importer::make_random_aggregate_id(&self.randomizer_facade)),
 				value: serialized_import,
@@ -350,21 +351,21 @@ impl ImportEssential {
 	// distribute load across the cluster. should be switched to read token (once it is implemented on the
 	// BlobFacade) and use ArchiveDataType::MailDetails to target one of the nodes that actually stores the
 	// data
-	async fn get_server_url_to_upload(&self) -> Result<String, ImportError> {
+	async fn get_server_url_to_upload(&self) -> Result<String, AsyncMailImportError> {
 		self.logged_in_sdk
 			.request_blob_facade_write_token(ArchiveDataType::Attachments)
 			.await
-			.map_err(|e| ImportError::sdk("request blob write token", e))?
+			.map_err(|e| AsyncMailImportError::sdk("request blob write token", e))?
 			.servers
 			.last()
 			.map(|s| s.url.to_string())
-			.ok_or(ImportError::EmptyBlobServerList)
+			.ok_or(ImportErrorKind::EmptyBlobServerList.into())
 	}
 
 	async fn make_import_service_call(
 		&self,
 		import_mail_data: (ImportMailPostIn, GenericAesKey),
-	) -> Result<ImportMailPostOut, ImportError> {
+	) -> Result<ImportMailPostOut, AsyncMailImportError> {
 		let server_to_upload = self.get_server_url_to_upload().await?;
 		let (import_mail_post_in, session_key_for_import_post) = import_mail_data;
 
@@ -379,7 +380,7 @@ impl ImportEssential {
 				},
 			)
 			.await
-			.map_err(|e| ImportError::sdk("calling ImportMailService", e))
+			.map_err(|e| AsyncMailImportError::sdk("calling ImportMailService", e))
 	}
 
 	pub async fn create_new_server_import_state(
@@ -481,12 +482,8 @@ impl Importer {
 			PreparationError::NoNativeRestClient
 		})?;
 
-		let sdk_credentials = tuta_credentials
-			.try_into()
-			.map_err(|_validation_error| PreparationError::CredentialValidationError)?;
-
 		let logged_in_sdk = tutasdk::Sdk::new(base_url, Arc::new(rest_client))
-			.login(sdk_credentials)
+			.login(tuta_credentials.into())
 			.await
 			.map_err(|e| {
 				log::error!("Can not login to sdk: {e:?}");
@@ -547,6 +544,8 @@ impl Importer {
 		Ok(importer)
 	}
 
+	/// set up remote state for this import if necessary and write the information
+	/// to disk so it can be resumed if interrupted.
 	pub(super) async fn initialize(
 		logged_in_sdk: Arc<LoggedInSdk>,
 		remote_state_id: Option<IdTupleGenerated>,
@@ -625,7 +624,7 @@ impl Importer {
 	/// return `Ok(true)` if all mails are finished
 	/// 	   `Ok(false)` if we had no errors and can continue
 	///        `Err()` if something went wrong. we might still continue depending on the error.
-	pub async fn import_next_chunk(&self) -> Result<bool, ImportError> {
+	pub async fn import_next_chunk(&self) -> Result<bool, AsyncMailImportError> {
 		let import_essentials = &self.essentials;
 		let Self {
 			chunked_import_source,
@@ -644,7 +643,7 @@ impl Importer {
 						remote_state.failedMails += 1;
 					})
 					.await?;
-				Err(ImportError::TooBigChunk)?
+				Err(ImportErrorKind::TooBigChunk)?
 			},
 
 			// these chunks can be imported in single request
@@ -681,8 +680,12 @@ impl Importer {
 					})
 					.await?;
 				for eml_file_path in eml_file_paths.into_iter().flatten() {
-					fs::remove_file(&eml_file_path)
-						.map_err(|e| ImportError::FileDeletionError(e, eml_file_path))?;
+					fs::remove_file(&eml_file_path).map_err(|e| {
+						AsyncMailImportError::with_path(
+							ImportErrorKind::FileDeletionError,
+							eml_file_path,
+						)
+					})?;
 				}
 
 				Ok(false)
@@ -693,10 +696,9 @@ impl Importer {
 	pub(super) async fn set_remote_import_status(
 		&self,
 		exit_import_status: ImportStatus,
-	) -> Result<(), ImportError> {
+	) -> Result<(), AsyncMailImportError> {
 		match exit_import_status {
 			terminal_status @ (ImportStatus::Finished | ImportStatus::Canceled) => {
-				FileImport::delete_dir_if_exists(&self.essentials.import_directory).ok();
 				self.essentials
 					.update_remote_state(|remote_state| {
 						remote_state.status = terminal_status as i64;
@@ -720,7 +722,7 @@ impl Importer {
 		}
 	}
 
-	pub async fn start_stateful_import(&self) -> Result<(), ImportError> {
+	pub async fn start_stateful_import(&self) -> Result<(), AsyncMailImportError> {
 		loop {
 			let requested_progress_action = *self.next_progress_action.lock().await;
 			match requested_progress_action {
@@ -730,6 +732,7 @@ impl Importer {
 
 					match import_chunk_res {
 						Ok(true) => {
+							FileImport::clean_import_directory(&self.essentials.import_directory);
 							self.set_remote_import_status(ImportStatus::Finished)
 								.await?;
 							break;
@@ -752,39 +755,30 @@ impl Importer {
 	/// the import should stop for now.
 	fn handle_err_while_importing_chunk(
 		&self,
-		import_error: ImportError,
-	) -> Result<(), ImportError> {
+		import_error: AsyncMailImportError,
+	) -> Result<(), AsyncMailImportError> {
 		// todo: review
-		match import_error {
-			ImportError::NoImportFeature => Err(ImportError::NoImportFeature),
+		match import_error.kind {
+			ImportErrorKind::NoImportFeature => Err(ImportErrorKind::NoImportFeature)?,
 
-			ImportError::EmptyBlobServerList
-			| ImportError::GenericSdkError
-			| ImportError::SdkError {
-				action: _,
-				error: _,
-			} => Err(ImportError::GenericSdkError),
+			ImportErrorKind::EmptyBlobServerList
+			| ImportErrorKind::GenericSdkError
+			| ImportErrorKind::SdkError => Err(ImportErrorKind::GenericSdkError)?,
 
-			ImportError::LocalImportStateIdInvalid => {
-				// since the id file itself is corrupted, we can not do anything about it,
-				// instead show user import directory and ask them to delete the directory manually
-				Err(ImportError::LocalImportStateIdInvalid)
-			},
-
-			ImportError::IterationError(e) => {
+			ImportErrorKind::IterationError => {
 				// probably we can just continue to iterate through the source,
 				// downside: we might lose this item and when we finish we empty the dir,
 				// do this item just got lost in void
 				Ok(())
 			},
 
-			ImportError::TooBigChunk => {
+			ImportErrorKind::TooBigChunk => {
 				// likely caused by a single mail that's too big for a single chunk.
 				// we can continue and this mail will be added to failed mails count.
 				// todo: we should clean up before propagating this
 				Ok(())
 			},
-			ImportError::FileDeletionError(_, _) => {
+			ImportErrorKind::FileDeletionError => {
 				// we can not delete the file after we imported it,
 				// best case: everything else is fine and import is finished/canceled so we just delete the whole dir
 				// worst case: use pause/resume ( or quit the app and open again ) and the imported chunk will be imported again
@@ -793,7 +787,7 @@ impl Importer {
 		}
 	}
 
-	pub(super) fn existing_import(
+	pub(super) fn get_existing_import_id(
 		import_directory: &Path,
 	) -> std::io::Result<Option<IdTupleGenerated>> {
 		let state_file_path = import_directory.join(STATE_ID_FILE_NAME);
@@ -1007,7 +1001,7 @@ mod tests {
 		.iter()
 		.collect();
 
-		let result = Importer::existing_import(&import_dir);
+		let result = Importer::get_existing_import_id(&import_dir);
 		assert!(matches!(result, Ok(None)));
 	}
 
@@ -1036,7 +1030,9 @@ mod tests {
 		let invalid_id = "blah";
 		fs::write(&state_id_file_path, invalid_id).unwrap();
 
-		let result = Importer::existing_import(&import_dir).unwrap_err().kind();
+		let result = Importer::get_existing_import_id(&import_dir)
+			.unwrap_err()
+			.kind();
 		assert_eq!(result, std::io::ErrorKind::InvalidData);
 	}
 }

@@ -30,5 +30,5 @@ export interface NativeMailImportFacade {
 	/**
 	 * await to receive any errors and import state changes that must be handled locally
 	 */
-	getNextLocalEvent(mailboxId: string): Promise<string>
+	setAsyncErrorHook(mailboxId: string): Promise<void>
 }
