@@ -2,14 +2,13 @@ import m from "mithril"
 import { assertMainOrNode, isAdminClient } from "../../api/common/Env"
 import { Dialog, DialogType } from "../base/Dialog"
 import { DefaultAnimationTime } from "../animation/Animations"
-import type { TranslationKey, TranslationText } from "../../misc/LanguageViewModel"
+import type { TranslationText } from "../../misc/LanguageViewModel"
 import { lang } from "../../misc/LanguageViewModel"
 import { progressIcon } from "../base/Icon"
 import { CompletenessIndicator } from "../CompletenessIndicator.js"
 import Stream from "mithril/stream"
 import { TabIndex } from "../../api/common/TutanotaConstants"
-import { lazy, MaybeLazy, resolveMaybeLazy } from "@tutao/tutanota-utils"
-import { delay } from "@tutao/tutanota-utils"
+import { delay, MaybeLazy, resolveMaybeLazy } from "@tutao/tutanota-utils"
 import { DialogHeaderBar, DialogHeaderBarAttrs } from "../base/DialogHeaderBar.js"
 
 assertMainOrNode()
@@ -30,8 +29,13 @@ export async function showProgressDialog<T>(
 	const progressDialog = new Dialog(DialogType.Progress, {
 		view: () => {
 			let title = lang.getMaybeLazy(resolveMaybeLazy(messageIdOrMessageFunction))
-			m("", [
-				isCancelable && headerBarAttrs ? m(DialogHeaderBar, { ...headerBarAttrs, class: "mb-l mt-negative-l mr-negative-l ml-negative-l" }) : null,
+			return m("", [
+				isCancelable && headerBarAttrs
+					? m(DialogHeaderBar, {
+							...headerBarAttrs,
+							class: "mb-l mt-negative-l mr-negative-l ml-negative-l",
+					  })
+					: null,
 				m(
 					".hide-outline",
 					{
