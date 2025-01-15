@@ -117,7 +117,7 @@ export class CalendarSearchView extends BaseTopLevelView implements TopLevelView
 			{
 				minWidth: size.second_col_min_width,
 				maxWidth: size.second_col_max_width,
-				headerCenter: () => lang.get("searchResult_label"),
+				headerCenter: "searchResult_label",
 			},
 		)
 		this.resultDetailsColumn = new ViewColumn(
@@ -215,7 +215,7 @@ export class CalendarSearchView extends BaseTopLevelView implements TopLevelView
 					...header,
 					backAction: () => this.viewSlider.focusPreviousColumn(),
 					columnType: "other",
-					title: lang.get("search_label"),
+					title: "search_label",
 					actions: null,
 					multicolumnActions: () => [],
 					primaryAction: () => this.renderHeaderRightView(),
@@ -362,7 +362,7 @@ export class CalendarSearchView extends BaseTopLevelView implements TopLevelView
 					click: () => {
 						const dialog = Dialog.editSmallDialog(
 							{
-								middle: () => lang.get("filter_label"),
+								middle: "filter_label",
 								right: [
 									{
 										label: "ok_action",

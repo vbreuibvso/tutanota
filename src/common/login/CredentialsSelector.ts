@@ -18,7 +18,7 @@ export class CredentialsSelector implements Component<CredentialsSelectorAttrs> 
 			const onCredentialsDeleted = a.onCredentialsDeleted
 			buttons.push(
 				m(LoginButton, {
-					label: () => c.login,
+					label: { key: "login_label", text: c.login },
 					onclick: () => a.onCredentialsSelected(c),
 				}),
 			)

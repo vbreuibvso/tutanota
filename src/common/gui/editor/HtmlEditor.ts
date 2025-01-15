@@ -64,7 +64,7 @@ export class HtmlEditor implements Component {
 		return m(".html-editor" + (this.mode === HtmlEditorMode.WYSIWYG ? ".text-break" : ""), { class: this.editor.isEnabled() ? "" : "disabled" }, [
 			modeSwitcherLabel != null
 				? m(DropDownSelector, {
-						label: () => lang.getMaybeLazy(modeSwitcherLabel),
+						label: lang.getMaybeLazy(modeSwitcherLabel),
 						items: [
 							{ name: lang.get("richText_label"), value: HtmlEditorMode.WYSIWYG },
 							{ name: lang.get("htmlSourceCode_label"), value: HtmlEditorMode.HTML },

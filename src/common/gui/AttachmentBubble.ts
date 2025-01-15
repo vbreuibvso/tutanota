@@ -54,8 +54,8 @@ export class AttachmentBubble implements Component<AttachmentBubbleAttrs> {
 			return m(
 				BubbleButton,
 				{
-					label: () => attachment.name,
-					text: () => rest,
+					label: { key: "attachment_name", text: attachment.name },
+					text: { key: "attachment_base_name", text: rest },
 					icon: getAttachmentIcon(vnode.attrs.type),
 					onclick: () => {
 						showAttachmentDetailsPopup(this.dom!, vnode.attrs).then(() => this.dom?.focus())

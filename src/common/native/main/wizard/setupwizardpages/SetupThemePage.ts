@@ -15,7 +15,7 @@ export class SetupThemePage implements WizardPageN<SetupThemePageAttrs> {
 		// Get the whitelabel themes from the theme controller and map them to `RadioSelector` options.
 		locator.themeController.getCustomThemes().then((customThemes) => {
 			this.customThemes = customThemes.map((themeId) => {
-				return { name: () => themeId, value: themeId }
+				return { name: lang.makeResolved(themeId, themeId), value: themeId }
 			})
 			m.redraw()
 		})

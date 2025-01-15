@@ -1,9 +1,9 @@
 import m, { Children, Vnode } from "mithril"
 import { ViewSlider } from "../../../common/gui/nav/ViewSlider.js"
 import { ColumnType, ViewColumn } from "../../../common/gui/base/ViewColumn"
-import { lang, TranslationText } from "../../../common/misc/LanguageViewModel"
+import { lang } from "../../../common/misc/LanguageViewModel"
 import { Dialog } from "../../../common/gui/base/Dialog"
-import { FeatureType, HighestTierPlans, getMailFolderType, Keys, MailSetKind } from "../../../common/api/common/TutanotaConstants"
+import { FeatureType, getMailFolderType, Keys, MailSetKind } from "../../../common/api/common/TutanotaConstants"
 import { AppHeaderAttrs, Header } from "../../../common/gui/Header.js"
 import { Mail, MailBox, MailFolder } from "../../../common/api/entities/tutanota/TypeRefs.js"
 import { isEmpty, noOp, ofClass } from "@tutao/tutanota-utils"
@@ -167,8 +167,8 @@ export class MailView extends BaseTopLevelView implements TopLevelView<MailViewA
 												console.warn("Cannot delete folder, no folder is selected")
 												return
 											}
-											const confirmed = await Dialog.confirm(() =>
-												lang.get("confirmDeleteFinallySystemFolder_msg", { "{1}": getFolderName(folder) }),
+											const confirmed = await Dialog.confirm(
+												lang.getResolved("confirmDeleteFinallySystemFolder_msg", { "{1}": getFolderName(folder) }),
 											)
 											if (confirmed) {
 												showProgressDialog("progressDeleting_msg", this.mailViewModel.finallyDeleteAllMailsInSelectedFolder(folder))
@@ -206,8 +206,8 @@ export class MailView extends BaseTopLevelView implements TopLevelView<MailViewA
 				minWidth: size.second_col_min_width,
 				maxWidth: size.second_col_max_width,
 				headerCenter: () => {
-					const selectedFolder = this.mailViewModel.getFolder()
-					return selectedFolder ? getFolderName(selectedFolder) : ""
+					const folder = this.mailViewModel.getFolder()
+					return folder ? lang.makeResolved("folder_name", getFolderName(folder)) : "emptyString_msg"
 				},
 			},
 		)
@@ -614,7 +614,7 @@ export class MailView extends BaseTopLevelView implements TopLevelView<MailViewA
 			{
 				minWidth: size.first_col_min_width,
 				maxWidth: size.first_col_max_width,
-				headerCenter: () => lang.get("folderTitle_label"),
+				headerCenter: "folderTitle_label",
 			},
 		)
 	}
@@ -637,7 +637,7 @@ export class MailView extends BaseTopLevelView implements TopLevelView<MailViewA
 			return m(
 				SidebarSection,
 				{
-					name: () => getMailboxName(locator.logins, mailboxDetail),
+					name: lang.makeResolved("mailbox_name", getMailboxName(locator.logins, mailboxDetail)),
 				},
 				[
 					this.createMailboxFolderItems(mailboxDetail, inEditMode, () => {
@@ -840,16 +840,16 @@ export class MailView extends BaseTopLevelView implements TopLevelView<MailViewA
 		const folders = await mailLocator.mailModel.getMailboxFoldersForId(mailboxDetail.mailbox.folders._id)
 
 		if (isSpamOrTrashFolder(folders, folder)) {
-			const confirmed = await Dialog.confirm(() =>
-				lang.get("confirmDeleteFinallyCustomFolder_msg", {
+			const confirmed = await Dialog.confirm(
+				lang.getResolved("confirmDeleteFinallyCustomFolder_msg", {
 					"{1}": getFolderName(folder),
 				}),
 			)
 			if (!confirmed) return
 			await mailLocator.mailModel.finallyDeleteCustomMailFolder(folder)
 		} else {
-			const confirmed = await Dialog.confirm(() =>
-				lang.get("confirmDeleteCustomFolder_msg", {
+			const confirmed = await Dialog.confirm(
+				lang.getResolved("confirmDeleteCustomFolder_msg", {
 					"{1}": getFolderName(folder),
 				}),
 			)
@@ -888,8 +888,8 @@ export class MailView extends BaseTopLevelView implements TopLevelView<MailViewA
 	}
 
 	private async showLabelDeleteDialog(label: MailFolder) {
-		const confirmed = await Dialog.confirm(() =>
-			lang.get("confirmDeleteLabel_msg", {
+		const confirmed = await Dialog.confirm(
+			lang.getResolved("confirmDeleteLabel_msg", {
 				"{1}": label.name,
 			}),
 		)
@@ -913,7 +913,7 @@ export class MailView extends BaseTopLevelView implements TopLevelView<MailViewA
 							return m(SidebarSectionRow, {
 								icon: Icons.Label,
 								iconColor: getLabelColor(label.color),
-								label: () => label.name,
+								label: lang.makeResolved("folder_name", label.name),
 								path,
 								isSelectedPrefix: inEditMode ? false : path,
 								disabled: inEditMode,

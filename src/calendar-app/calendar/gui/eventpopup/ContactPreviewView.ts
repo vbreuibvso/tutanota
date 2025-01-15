@@ -111,7 +111,7 @@ const ActionButtons = pureComponent((contact: Contact) => {
 	const showMailDropdown = createDropdown({
 		lazyButtons: () =>
 			contact.mailAddresses.map((mailAddress, index) => ({
-				label: () => `${renderSuffix(mailAddress.customTypeName)}${mailAddress.address}`,
+				label: { key: "mailAddress_label", text: `${renderSuffix(mailAddress.customTypeName)}${mailAddress.address}` },
 				click: () => {
 					if (client.isCalendarApp()) {
 						simulateMailToClick(mailAddress.address)
@@ -128,7 +128,7 @@ const ActionButtons = pureComponent((contact: Contact) => {
 	const showPhoneDropdown = createDropdown({
 		lazyButtons: () =>
 			contact.phoneNumbers.map((contactPhone, index) => ({
-				label: () => `${renderSuffix(contactPhone.customTypeName)}${contactPhone.number}`,
+				label: { key: "phoneNumber", text: `${renderSuffix(contactPhone.customTypeName)}${contactPhone.number}` },
 				click: () => {
 					const element: HTMLAnchorElement = document.createElement("a")
 					element.href = `tel:${contactPhone.number}`

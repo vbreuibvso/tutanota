@@ -22,7 +22,7 @@ export function showNewsDialog(newsModel: NewsModel) {
 	}
 	const header: DialogHeaderBarAttrs = {
 		left: [closeButton],
-		middle: () => lang.get("news_label"),
+		middle: "news_label",
 	}
 
 	let loaded = false

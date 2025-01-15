@@ -153,7 +153,7 @@ export class CalendarSettingsView extends BaseTopLevelView implements TopLevelVi
 			{
 				minWidth: size.second_col_min_width,
 				maxWidth: size.third_col_max_width,
-				headerCenter: () => lang.getMaybeLazy(this.selectedFolder.name),
+				headerCenter: lang.getMaybeLazy(this.selectedFolder.name),
 			},
 		)
 	}
@@ -187,7 +187,7 @@ export class CalendarSettingsView extends BaseTopLevelView implements TopLevelVi
 			{
 				minWidth: size.first_col_min_width,
 				maxWidth: size.first_col_max_width,
-				headerCenter: () => lang.get("settings_label"),
+				headerCenter: "settings_label",
 			},
 		)
 	}
@@ -328,7 +328,7 @@ export class CalendarSettingsView extends BaseTopLevelView implements TopLevelVi
 				class: styles.isSingleColumnLayout() ? "pr-m" : "pr-vpad-s",
 			},
 			[
-				m("small.uppercase.pb-s.b.text-ellipsis", { style: { color: theme.navigation_button } }, lang.getMaybeLazy(title)),
+				m("small.uppercase.pb-s.b.text-ellipsis", { style: { color: theme.navigation_button } }, lang.getMaybeLazy(title).text),
 				m(
 					".flex.col.border-radius-m.list-bg",
 					folders
@@ -467,7 +467,7 @@ export class CalendarSettingsView extends BaseTopLevelView implements TopLevelVi
 						onclick: () => {
 							setTimeout(() => {
 								const dialog = Dialog.showActionDialog({
-									title: () => lang.get("about_label"),
+									title: "about_label",
 									child: () =>
 										m(AboutDialog, {
 											onShowSetupWizard: () => {

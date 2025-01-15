@@ -75,21 +75,23 @@ export class ContactImporter {
 			.importContactList(contacts, contactListId)
 			.catch(
 				ofClass(ImportError, (e) =>
-					Dialog.message(() =>
-						lang.get("importContactsError_msg", {
+					Dialog.message({
+						key: "confirm_msg",
+						text: lang.get("importContactsError_msg", {
 							"{amount}": e.numFailed + "",
 							"{total}": contacts.length + "",
 						}),
-					),
+					}),
 				),
 			)
 			.catch(() => Dialog.message("unknownError_msg"))
 		await showProgressDialog("pleaseWait_msg", importPromise)
-		await Dialog.message(() =>
-			lang.get("importVCardSuccess_msg", {
+		await Dialog.message({
+			key: "confirm_msg",
+			text: lang.get("importVCardSuccess_msg", {
 				"{1}": contacts.length,
 			}),
-		)
+		})
 	}
 
 	// will check for permission and ask for it if it is not granted
@@ -275,7 +277,7 @@ export function showContactImportDialog(contacts: Contact[], okAction: (dialog: 
 						},
 					},
 				],
-				middle: () => lang.getMaybeLazy(title),
+				middle: title,
 				right: [
 					{
 						type: ButtonType.Primary,

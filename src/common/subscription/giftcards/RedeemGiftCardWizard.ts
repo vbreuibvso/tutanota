@@ -147,7 +147,7 @@ class RedeemGiftCardModel {
 			)
 			.catch(
 				ofClass(NotAuthorizedError, (e) => {
-					throw new UserError(() => e.message)
+					throw new UserError(lang.makeResolved("error_msg", e.message))
 				}),
 			)
 	}
@@ -282,7 +282,7 @@ class GiftCardCredentialsPage implements WizardPageN<RedeemGiftCardModel> {
 						if (e instanceof UserError) {
 							showUserError(e)
 						} else {
-							this.loginFormHelpText = lang.getMaybeLazy(getLoginErrorMessage(e, false))
+							this.loginFormHelpText = lang.resolveToTranslation(getLoginErrorMessage(e, false))
 						}
 					}
 				}
@@ -308,7 +308,7 @@ class GiftCardCredentialsPage implements WizardPageN<RedeemGiftCardModel> {
 					if (e instanceof UserError) {
 						showUserError(e)
 					} else {
-						this.loginFormHelpText = lang.getMaybeLazy(getLoginErrorMessage(e, false))
+						this.loginFormHelpText = lang.resolveToTranslation(getLoginErrorMessage(e, false))
 						handleExpectedLoginError(e, noOp)
 					}
 				}

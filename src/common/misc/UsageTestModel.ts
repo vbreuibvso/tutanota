@@ -28,14 +28,15 @@ import { EntityClient } from "../api/common/EntityClient.js"
 import { EventController } from "../api/main/EventController.js"
 import { createUserSettingsGroupRoot, UserSettingsGroupRootTypeRef } from "../api/entities/tutanota/TypeRefs.js"
 import { EntityUpdateData, isUpdateForTypeRef } from "../api/common/utils/EntityUpdateUtils.js"
+
 const PRESELECTED_LIKERT_VALUE = null
 
 type ExperienceSamplingOptions = {
-	title?: lazy<string> | string
-	explanationText?: TranslationKey | lazy<string>
+	title?: TranslationKey
+	explanationText?: TranslationKey
 	perMetric: {
 		[key: string]: {
-			question: TranslationKey | lazy<string>
+			question: TranslationKey
 			answerOptions: Array<string>
 		}
 	}
@@ -67,12 +68,12 @@ export async function showExperienceSamplingDialog(stage: Stage, experienceSampl
 			stage.complete().then(() => dialog.close())
 			return Dialog.message("experienceSamplingThankYou_msg")
 		},
-		title: experienceSamplingOptions.title ?? lang.get("experienceSamplingHeader_label"),
+		title: experienceSamplingOptions.title ?? "experienceSamplingHeader_label",
 		child: () => {
 			const children: Array<Children> = []
 
 			if (experienceSamplingOptions.explanationText) {
-				const explanationTextLines = lang.getMaybeLazy(experienceSamplingOptions.explanationText).split("\n")
+				const explanationTextLines = lang.resolveToTranslation(experienceSamplingOptions.explanationText).split("\n")
 
 				children.push(
 					m("#dialog-message.text-break.text-prewrap.selectable.scroll", [explanationTextLines.map((line) => m(".text-break.selectable", line))]),
@@ -89,7 +90,7 @@ export async function showExperienceSamplingDialog(stage: Stage, experienceSampl
 					}
 				})
 
-				children.push(m("p.text-prewrap.scroll", lang.getMaybeLazy(metricOptions.question)))
+				children.push(m("p.text-prewrap.scroll", lang.resolveToTranslation(metricOptions.question)))
 
 				children.push(
 					m(DropDownSelector, {

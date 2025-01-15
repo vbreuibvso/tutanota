@@ -32,7 +32,7 @@ export class CredentialFormatMigrator {
 		} catch (e) {
 			console.error(e)
 			await Dialog.message(
-				() => "Could not migrate credentials",
+				{ key: "confirm_msg", text: "Could not migrate credentials" },
 				`${e.name} ${e.message}
 ${e.stack}`,
 			).then(() => this.migrate())

@@ -80,13 +80,7 @@ export class UpgradeSubscriptionPage implements WizardPageN<UpgradeSubscriptionD
 			},
 			[PlanType.Revolutionary]: this.createUpgradeButton(data, PlanType.Revolutionary),
 			[PlanType.Legend]: () => ({
-				label: () => {
-					if (shouldApplyCyberMonday) {
-						return lang.get("pricing.cyber_monday_select_action")
-					}
-
-					return lang.get("pricing.select_action")
-				},
+				label: shouldApplyCyberMonday ? "pricing.cyber_monday_select_action" : "pricing.select_action",
 				class: shouldApplyCyberMonday ? "accent-bg-cyber-monday" : undefined,
 				onclick: () => this.setNonFreeDataAndGoToNextPage(data, PlanType.Legend),
 			}),

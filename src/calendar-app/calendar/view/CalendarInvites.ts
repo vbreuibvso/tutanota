@@ -173,7 +173,7 @@ export class CalendarInviteHandler {
 			await notificationModel.send(eventClone, [], { responseModel, inviteModel: null, cancelModel: null, updateModel: null })
 		} catch (e) {
 			if (e instanceof UserError) {
-				await Dialog.message(() => e.message)
+				await Dialog.message({ key: "confirm_msg", text: e.message })
 				return ReplyResult.ReplyNotSent
 			} else {
 				throw e

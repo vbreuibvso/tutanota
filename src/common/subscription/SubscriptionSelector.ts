@@ -107,7 +107,7 @@ export class SubscriptionSelector implements Component<SubscriptionSelectorAttr>
 		}
 
 		if (msg) {
-			return wrapInDiv(lang.getMaybeLazy(msg))
+			return wrapInDiv(lang.resolveToTranslation(msg))
 		} else if (currentPlanType != null && LegacyPlans.includes(currentPlanType)) {
 			return wrapInDiv(lang.get("currentPlanDiscontinued_msg"))
 		}
@@ -309,7 +309,7 @@ export class SubscriptionSelector implements Component<SubscriptionSelectorAttr>
 					: getActionButtonBySubscription(selectorAttrs.actionButtons, targetSubscription),
 			price: priceStr,
 			referencePrice: referencePriceStr,
-			priceHint: () => `${getPriceHint(subscriptionPrice, interval, multiuser)}${asteriskOrEmptyString}`,
+			priceHint: lang.makeResolved("price_hint", `${getPriceHint(subscriptionPrice, interval, multiuser)}${asteriskOrEmptyString}`),
 			helpLabel: getHelpLabel(targetSubscription, selectorAttrs.options.businessUse()),
 			width: selectorAttrs.boxWidth,
 			height: selectorAttrs.boxHeight,

@@ -1,6 +1,6 @@
 import m, { Children, Component, Vnode } from "mithril"
 import { Dialog } from "../../common/gui/base/Dialog"
-import type { TranslationKey } from "../../common/misc/LanguageViewModel"
+import type { ResolvedTranslation, TranslationKey } from "../../common/misc/LanguageViewModel"
 import { lang } from "../../common/misc/LanguageViewModel"
 import { isMailAddress } from "../../common/misc/FormatValidator"
 import { formatBirthdayNumeric, formatContactDate } from "../../common/contactsFunctionality/ContactUtils.js"
@@ -381,17 +381,20 @@ export class ContactEditor {
 	}
 
 	private renderCustomDatesEditor(id: Id, allowCancel: boolean, date: CompleteCustomDate): Children {
-		let dateHelpText = () => {
+		let dateHelpText = (): ResolvedTranslation => {
 			let bday = createBirthday({
 				day: "22",
 				month: "9",
 				year: "2000",
 			})
 			return !date.isValid
-				? lang.get("invalidDateFormat_msg", {
-						"{1}": formatBirthdayNumeric(bday),
-				  })
-				: ""
+				? {
+						key: "invalidDateFormat_msg",
+						text: lang.get("invalidDateFormat_msg", {
+							"{1}": formatBirthdayNumeric(bday),
+						}),
+				  }
+				: { key: "empty", text: "" }
 		}
 
 		const typeLabels: Array<[ContactCustomDateType, TranslationKey]> = typedEntries(ContactCustomDateTypeToLabel)
@@ -399,7 +402,7 @@ export class ContactEditor {
 			value: date.date,
 			fieldType: TextFieldType.Text,
 			label: getContactCustomDateTypeToLabel(downcast(date.type), date.customTypeName),
-			helpLabel: () => dateHelpText(),
+			helpLabel: dateHelpText(),
 			cancelAction: () => {
 				findAndRemove(this.customDates, (t) => t[1] === id)
 			},
@@ -601,7 +604,7 @@ export class ContactEditor {
 		return m(ContactAggregateEditor, {
 			value: pronouns.pronouns,
 			fieldType: TextFieldType.Text,
-			label: pronouns.language,
+			label: { key: "lang", text: pronouns.language },
 			helpLabel: "emptyString_msg",
 			autocapitalizeTextField: Autocapitalize.none,
 			cancelAction: () => {
@@ -871,7 +874,7 @@ export class ContactEditor {
 	private createDialog(): Dialog {
 		const headerBarAttrs: DialogHeaderBarAttrs = {
 			left: [this.createCloseButtonAttrs()],
-			middle: () => this.contact.firstName + " " + this.contact.lastName,
+			middle: { key: "name", text: this.contact.firstName + " " + this.contact.lastName },
 			right: [
 				{
 					label: "save_action",

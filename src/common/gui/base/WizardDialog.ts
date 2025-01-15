@@ -233,7 +233,7 @@ class WizardDialogAttrs<T> {
 		let currentPageIndex = this.currentPage ? this._getEnabledPages().indexOf(this.currentPage) : -1
 
 		const backButtonAttrs: ButtonAttrs = {
-			label: () => (currentPageIndex === 0 ? lang.get(this.cancelButtonText) : lang.get("back_action")),
+			label: currentPageIndex === 0 ? this.cancelButtonText : "back_action",
 			click: () => this.goToPreviousPageOrClose(),
 			type: ButtonType.Secondary,
 		}
@@ -414,7 +414,7 @@ export function createWizardDialog<T>(
 }
 
 async function confirmThenCleanup(closeAction: () => Promise<void>) {
-	const confirmed = await Dialog.confirm(() => lang.get("closeWindowConfirmation_msg"))
+	const confirmed = await Dialog.confirm("closeWindowConfirmation_msg")
 	if (confirmed) {
 		closeAction()
 	}

@@ -1,6 +1,6 @@
 import m, { Children, ClassComponent, Vnode } from "mithril"
 import { Autocomplete, TextField, TextFieldType } from "./TextField.js"
-import { TranslationText } from "../../misc/LanguageViewModel"
+import { ResolvedTranslation, TranslationText } from "../../misc/LanguageViewModel"
 import { Keys } from "../../api/common/TutanotaConstants"
 import { createAsyncDropdown, DropdownChildAttrs } from "./Dropdown.js"
 import { lazy } from "@tutao/tutanota-utils"
@@ -9,7 +9,7 @@ import { BaseButton } from "./buttons/BaseButton.js"
 export interface BubbleTextFieldAttrs {
 	label: TranslationText
 	items: Array<string>
-	renderBubbleText: (item: string) => string
+	renderBubbleText: (item: string) => ResolvedTranslation
 	getBubbleDropdownAttrs: (item: string) => Promise<DropdownChildAttrs[]>
 	text: string
 	onInput: (text: string) => void
@@ -48,7 +48,7 @@ export class BubbleTextField implements ClassComponent<BubbleTextFieldAttrs> {
 								".flex-no-grow-shrink-auto.overflow-hidden",
 								m(BaseButton, {
 									label: bubbleText,
-									text: bubbleText,
+									text: bubbleText.text,
 									class: "text-bubble button-content content-fg text-ellipsis flash",
 									style: {
 										"max-width": "100%",

@@ -18,7 +18,7 @@ import {
 import { getElementId } from "../../../common/api/common/utils/EntityUtils"
 import { reportMailsAutomatically } from "./MailReportDialog"
 import { DataFile } from "../../../common/api/common/DataFile"
-import { lang, TranslationKey } from "../../../common/misc/LanguageViewModel"
+import { lang, ResolvedTranslation, TranslationKey } from "../../../common/misc/LanguageViewModel"
 import { FileController } from "../../../common/file/FileController"
 import { DomRectReadOnlyPolyfilled, Dropdown, DropdownChildAttrs, PosRect } from "../../../common/gui/base/Dropdown.js"
 import { modal } from "../../../common/gui/base/Modal.js"
@@ -365,12 +365,11 @@ export async function showMailFolderDropdown(
 		(f) =>
 			({
 				// We need to pass in the raw folder name to avoid including it in searches
-				label: () =>
-					lang.get("folderDepth_label", {
-						"{folderName}": getFolderName(f.folder),
-						"{depth}": f.level,
-					}),
-				text: () => getIndentedFolderNameForDropdown(f),
+				label: lang.getResolved("folderDepth_label", {
+					"{folderName}": getFolderName(f.folder),
+					"{depth}": f.level,
+				}),
+				text: lang.makeResolved("folder_name", getIndentedFolderNameForDropdown(f)),
 				click: () => {
 					onSelected()
 					onClick(f)
@@ -384,15 +383,15 @@ export async function showMailFolderDropdown(
 	modal.displayUnique(dropdown, withBackground)
 }
 
-export function getConversationTitle(conversationViewModel: ConversationViewModel): string {
+export function getConversationTitle(conversationViewModel: ConversationViewModel): ResolvedTranslation {
 	if (!conversationViewModel.isFinished()) {
-		return lang.get("loading_msg")
+		return lang.getResolved("loading_msg")
 	}
 	const numberOfEmails = conversationViewModel.conversationItems().length
 	if (numberOfEmails === 1) {
-		return lang.get("oneEmail_label")
+		return lang.getResolved("oneEmail_label")
 	} else {
-		return lang.get("nbrOrEmails_label", { "{number}": numberOfEmails })
+		return lang.getResolved("nbrOrEmails_label", { "{number}": numberOfEmails })
 	}
 }
 

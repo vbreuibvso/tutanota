@@ -66,7 +66,7 @@ export class MailRecipientsTextField implements ClassComponent<MailRecipientsTex
 					attrs.onTextChanged(getFirstOrThrow(errors))
 				} else {
 					if (errors.length > 0) {
-						Dialog.message(() => `${lang.get("invalidPastedRecipients_msg")}\n\n${errors.join("\n")}`)
+						Dialog.message(lang.makeResolved("invalidPastedRecipients_msg", `${lang.get("invalidPastedRecipients_msg")}\n\n${errors.join("\n")}`))
 					}
 					attrs.onTextChanged(remainingText)
 				}
@@ -74,7 +74,7 @@ export class MailRecipientsTextField implements ClassComponent<MailRecipientsTex
 			items: attrs.recipients.map((recipient) => recipient.address),
 			renderBubbleText: (address: string) => {
 				const name = findRecipientWithAddress(attrs.recipients, address)?.name ?? null
-				return getMailAddressDisplayText(name, address, false)
+				return lang.makeResolved(address, getMailAddressDisplayText(name, address, false))
 			},
 			getBubbleDropdownAttrs: async (address) => (await attrs.getRecipientClickedDropdownAttrs?.(address)) ?? [],
 			onBackspace: () => {

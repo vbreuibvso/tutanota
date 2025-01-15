@@ -209,7 +209,7 @@ export class SelectMailAddressFormWithSuggestions implements Component<SelectMai
 
 	private createDropdownItemAttrs(domain: string, index: number, attrs: SelectMailAddressFormWithSuggestionsAttrs): DropdownButtonAttrs {
 		return {
-			label: () => domain,
+			label: { key: "domain", text: domain },
 			click: () => {
 				this.setDomain(attrs, index)
 				this.verifyMailAddress(attrs)

@@ -76,7 +76,7 @@ export function showGiftCardToShare(giftCard: GiftCard) {
 						click: () => dialog.close(),
 					},
 				],
-				middle: () => lang.get("giftCard_label"),
+				middle: "giftCard_label",
 			},
 			{
 				view: () => [

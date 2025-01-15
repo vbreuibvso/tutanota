@@ -1,5 +1,5 @@
 import m, { Children, Component, Vnode } from "mithril"
-import type { TranslationKey } from "../../misc/LanguageViewModel"
+import type { TranslationKey, TranslationText } from "../../misc/LanguageViewModel"
 import { lang } from "../../misc/LanguageViewModel"
 import { Icon, IconSize } from "./Icon"
 import { Icons } from "./icons/Icons"
@@ -13,7 +13,7 @@ import { isKeyPressed } from "../../misc/KeyManager.js"
 import { Keys } from "../../api/common/TutanotaConstants.js"
 
 export type ExpanderAttrs = {
-	label: TranslationKey | lazy<string>
+	label: TranslationText
 	expanded: boolean
 	onExpandedChange: (value: boolean) => unknown
 	isPropagatingEvents?: boolean
@@ -30,7 +30,7 @@ export type ExpanderPanelAttrs = {
 export class ExpanderButton implements Component<ExpanderAttrs> {
 	view(vnode: Vnode<ExpanderAttrs>): Children {
 		const a = vnode.attrs
-		const label = lang.getMaybeLazy(a.label)
+		const label = lang.getMaybeLazy(a.label).text
 		return m(
 			".limit-width",
 			m(

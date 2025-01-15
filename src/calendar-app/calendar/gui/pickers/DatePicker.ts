@@ -107,7 +107,7 @@ export class DatePicker implements Component<DatePickerAttrs> {
 				: null,
 			m(InputButton, {
 				tabIndex: Number(isApp() ? TabIndex.Programmatic : TabIndex.Default),
-				ariaLabel: lang.getMaybeLazy(label),
+				ariaLabel: lang.getMaybeLazy(label).text,
 				inputValue: this.inputText,
 				oninput: (newValue: string) => (this.inputText = newValue),
 				display: formatDateWithWeekdayAndYear(date ?? new Date()),
@@ -205,7 +205,7 @@ export class DatePicker implements Component<DatePickerAttrs> {
 		} else if (date != null) {
 			return [m("", formatDateWithWeekdayAndYear(date)), nullSelectionText ? m("", lang.getMaybeLazy(nullSelectionText)) : null]
 		} else {
-			return lang.getMaybeLazy(nullSelectionText ?? "emptyString_msg")
+			return lang.getMaybeLazy(nullSelectionText ?? "emptyString_msg").text
 		}
 	}
 

@@ -87,7 +87,7 @@ export class RadioGroup<T> implements Component<RadioGroupAttrs<T>> {
 					},
 				}),
 				m(".flex.flex-column.full-width", [
-					m("label.cursor-pointer", { for: optionId }, lang.getMaybeLazy(option.name)),
+					m("label.cursor-pointer", { for: optionId }, lang.resolveToTranslation(option.name)),
 					this.getInjection(String(option.value), injectionMap),
 				]),
 			],

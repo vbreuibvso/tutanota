@@ -211,7 +211,7 @@ export class Dropdown implements ModalComponent {
 		}
 		const closeBtn = () => {
 			return m(BaseButton, {
-				label: lang.get("close_alt"),
+				label: "close_alt",
 				text: lang.get("close_alt"),
 				class: "hidden-until-focus content-accent-fg button-content",
 				onclick: () => {
@@ -338,7 +338,7 @@ export class Dropdown implements ModalComponent {
 
 		let visibleElements: Array<ButtonAttrs> = downcast(this.visibleChildren().filter((b) => !isDropDownInfo(b)))
 		let matchingButton =
-			visibleElements.length === 1 ? visibleElements[0] : visibleElements.find((b) => lang.getMaybeLazy(b.label).toLowerCase() === filterString)
+			visibleElements.length === 1 ? visibleElements[0] : visibleElements.find((b) => lang.getMaybeLazy(b.label).text.toLowerCase() === filterString)
 
 		if (this.domInput && document.activeElement === this.domInput && matchingButton && matchingButton.click) {
 			matchingButton.click(new MouseEvent("click"), this.domInput)
@@ -365,7 +365,7 @@ export class Dropdown implements ModalComponent {
 			if (isDropDownInfo(b)) {
 				return b.info.includes(this.filterString.toLowerCase())
 			} else if (this.isFilterable) {
-				const filterable = lang.getMaybeLazy(b.text ?? b.label)
+				const filterable = lang.getMaybeLazy(b.text ?? b.label).text
 				return filterable.toLowerCase().includes(this.filterString.toLowerCase())
 			} else {
 				return true

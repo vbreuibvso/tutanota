@@ -1,5 +1,5 @@
 import { Icon, IconSize, lazyIcon } from "../../common/gui/base/Icon.js"
-import { lang, TranslationText } from "../../common/misc/LanguageViewModel.js"
+import { lang, ResolvedTranslation, TranslationText } from "../../common/misc/LanguageViewModel.js"
 import { ClickHandler } from "../../common/gui/base/GuiUtils.js"
 import m, { Children, Component, Vnode } from "mithril"
 import { BaseButton } from "../../common/gui/base/buttons/BaseButton.js"
@@ -20,7 +20,7 @@ export class SettingsNavButton implements Component<SettingsNavButtonAttrs> {
 			BaseButton,
 			{
 				label: attrs.label,
-				text: m("span.flex-grow", lang.getMaybeLazy(attrs.label)),
+				text: m("span.flex-grow", lang.resolveToTranslation(attrs.label)),
 				icon: attrs.icon
 					? m(Icon, {
 							icon: attrs.icon?.(),

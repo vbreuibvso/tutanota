@@ -2,7 +2,7 @@ import m, { Children, ClassComponent, CVnode } from "mithril"
 import { px, size } from "../size"
 import { DefaultAnimationTime } from "../animation/Animations"
 import { theme } from "../theme"
-import type { TranslationKey } from "../../misc/LanguageViewModel"
+import type { TranslationKey, TranslationText } from "../../misc/LanguageViewModel"
 import { lang } from "../../misc/LanguageViewModel"
 import type { lazy } from "@tutao/tutanota-utils"
 import { isKeyPressed, keyHandler, useKeyHandler } from "../../misc/KeyManager"
@@ -12,7 +12,7 @@ import { AriaPopupType } from "../AriaUtils.js"
 
 export type TextFieldAttrs = {
 	id?: string
-	label: TranslationKey | lazy<string>
+	label: TranslationText
 	value: string
 	autocompleteAs?: Autocomplete
 	autocapitalize?: Autocapitalize
@@ -134,7 +134,7 @@ export class TextField implements ClassComponent<TextFieldAttrs> {
 							transition: `transform ${labelTransitionSpeed}ms ease-out, font-size ${labelTransitionSpeed}ms  ease-out`,
 						},
 					},
-					lang.getMaybeLazy(a.label),
+					lang.resolveToTranslation(a.label),
 				),
 				m(".flex.flex-column", [
 					// another wrapper to fix IE 11 min-height bug https://github.com/philipwalton/flexbugs#3-min-height-on-a-flex-container-wont-apply-to-its-flex-items

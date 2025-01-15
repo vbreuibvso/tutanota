@@ -10,14 +10,14 @@ import {
 	EncryptionAuthStatus,
 	GroupType,
 	MailState,
-	SYSTEM_GROUP_MAIL_ADDRESS,
-	MAX_BASE64_IMAGE_SIZE,
 	MAX_ATTACHMENT_SIZE,
+	MAX_BASE64_IMAGE_SIZE,
+	SYSTEM_GROUP_MAIL_ADDRESS,
 	TUTA_MAIL_ADDRESS_DOMAINS,
 } from "../api/common/TutanotaConstants.js"
 import { UserController } from "../api/main/UserController.js"
 import { getEnabledMailAddressesForGroupInfo, getGroupInfoDisplayName } from "../api/common/utils/GroupUtils.js"
-import { lang, Language, TranslationKey } from "../misc/LanguageViewModel.js"
+import { lang, Language, ResolvedTranslation, TranslationKey } from "../misc/LanguageViewModel.js"
 import { MailboxDetail } from "./MailboxModel.js"
 import { LoginController } from "../api/main/LoginController.js"
 import { EntityClient } from "../api/common/EntityClient.js"
@@ -273,8 +273,8 @@ export function insertInlineImageB64ClickHandler(ev: Event, handler: ImageHandle
 		}
 
 		if (tooBig.length > 0) {
-			Dialog.message(() =>
-				lang.get("tooBigInlineImages_msg", {
+			Dialog.message(
+				lang.getResolved("tooBigInlineImages_msg", {
 					"{size}": MAX_BASE64_IMAGE_SIZE / 1024,
 				}),
 			)

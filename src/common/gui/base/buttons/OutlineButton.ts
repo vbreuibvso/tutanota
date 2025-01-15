@@ -25,8 +25,8 @@ export interface OutlineButtonAttrs {
 export class OutlineButton implements ClassComponent<OutlineButtonAttrs> {
 	view({ attrs }: Vnode<OutlineButtonAttrs>): Children {
 		return m(BaseButton, {
-			label: lang.getMaybeLazy(attrs.label),
-			text: attrs.text ? lang.getMaybeLazy(attrs.text) : lang.getMaybeLazy(attrs.label),
+			label: attrs.label,
+			text: attrs.text ? lang.resolveToTranslation(attrs.text) : lang.resolveToTranslation(attrs.label),
 			onclick: attrs.click,
 			disabled: attrs.disabled,
 			style: {

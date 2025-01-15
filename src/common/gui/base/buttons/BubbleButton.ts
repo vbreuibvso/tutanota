@@ -32,12 +32,11 @@ export function bubbleButtonPadding(): string {
  */
 export class BubbleButton implements Component<BubbleButtonAttrs> {
 	view({ attrs, children }: Vnode<BubbleButtonAttrs>): Children {
-		const label = lang.getMaybeLazy(attrs.label)
 		return m(
 			BaseButton,
 			{
-				label,
-				text: attrs.text ? m("span.text-ellipsis", lang.getMaybeLazy(attrs.text)) : label,
+				label: attrs.label,
+				text: attrs.text ? m("span.text-ellipsis", lang.getMaybeLazy(attrs.text).text) : lang.getMaybeLazy(attrs.label).text,
 				icon:
 					attrs.icon &&
 					m(Icon, {

@@ -9,6 +9,7 @@ import { assertMainOrNodeBoot } from "../api/common/Env"
  *
  */
 import { TabIndex } from "../api/common/TutanotaConstants"
+import { lang, TranslationText } from "../misc/LanguageViewModel.js"
 
 assertMainOrNodeBoot()
 

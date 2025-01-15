@@ -618,7 +618,7 @@ export class SendMailModel {
 		this.markAsChangedIfNecessary(sizeCheckResult.attachableFiles.length > 0)
 
 		if (sizeCheckResult.tooBigFiles.length > 0) {
-			throw new UserError(() => lang.get("tooBigAttachment_msg") + "\n" + sizeCheckResult.tooBigFiles.join("\n"))
+			throw new UserError(lang.makeResolved("tooBigAttachment_msg", lang.get("tooBigAttachment_msg") + "\n" + sizeCheckResult.tooBigFiles.join("\n")))
 		}
 	}
 
@@ -791,7 +791,10 @@ export class SendMailModel {
 					} else {
 						let invalidRecipients = e.message
 						throw new UserError(
-							() => lang.get("tutanotaAddressDoesNotExist_msg") + " " + lang.get("invalidRecipients_msg") + "\n" + invalidRecipients,
+							lang.makeResolved(
+								"error_msg",
+								lang.get("tutanotaAddressDoesNotExist_msg") + " " + lang.get("invalidRecipients_msg") + "\n" + invalidRecipients,
+							),
 						)
 					}
 				}),

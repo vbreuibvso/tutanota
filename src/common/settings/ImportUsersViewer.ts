@@ -23,8 +23,8 @@ export function checkAndImportUserData(userDetailsInputCsv: string, availableDom
 	let userData = csvToUserDetails(userDetailsInputCsv)
 
 	if (!userData) {
-		Dialog.message(() =>
-			lang.get("wrongUserCsvFormat_msg", {
+		Dialog.message(
+			lang.getResolved("wrongUserCsvFormat_msg", {
 				"{format}": CSV_USER_FORMAT,
 			}),
 		)
@@ -39,7 +39,7 @@ export function checkAndImportUserData(userDetailsInputCsv: string, availableDom
 
 			return true
 		} else {
-			Dialog.message(() => errorMessage)
+			Dialog.message(lang.makeResolved("error_msg", errorMessage))
 			return false
 		}
 	}
@@ -140,11 +140,10 @@ async function showBookingDialog(userDetailsArray: UserImportDetails[]) {
 	let notAvailableUsers: UserImportDetails[] = []
 	const operation = locator.operationProgressTracker.startNewOperation()
 	await showProgressDialog(
-		() =>
-			lang.get("createActionStatus_msg", {
-				"{index}": nbrOfCreatedUsers,
-				"{count}": userDetailsArray.length,
-			}),
+		lang.getResolved("createActionStatus_msg", {
+			"{index}": nbrOfCreatedUsers,
+			"{count}": userDetailsArray.length,
+		}),
 		promiseMap(userDetailsArray, (user, userIndex) => {
 			return createUserIfMailAddressAvailable(user, userIndex, userDetailsArray.length, operation.id).then((created) => {
 				if (created) {
@@ -161,11 +160,16 @@ async function showBookingDialog(userDetailsArray: UserImportDetails[]) {
 		.finally(() => operation.done)
 
 	if (notAvailableUsers.length > 0) {
-		await Dialog.message(() => lang.get("addressesAlreadyInUse_msg") + " " + notAvailableUsers.map((u) => u.mailAddress).join(", "))
+		await Dialog.message(
+			lang.makeResolved(
+				"addressesAlreadyInUse_msg",
+				lang.get("addressesAlreadyInUse_msg") + " " + notAvailableUsers.map((u) => u.mailAddress).join(", "),
+			),
+		)
 	}
 
-	await Dialog.message(() =>
-		lang.get("createdUsersCount_msg", {
+	await Dialog.message(
+		lang.getResolved("createdUsersCount_msg", {
 			"{1}": nbrOfCreatedUsers,
 		}),
 	)

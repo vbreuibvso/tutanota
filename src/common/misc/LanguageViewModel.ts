@@ -1,13 +1,12 @@
-import type { lazy } from "@tutao/tutanota-utils"
-import { downcast, typedEntries } from "@tutao/tutanota-utils"
+import { downcast, lazy, typedEntries } from "@tutao/tutanota-utils"
 import type { TranslationKeyType } from "./TranslationKey"
 import { getWhitelabelCustomizations, WhitelabelCustomizations } from "./WhitelabelCustomizations"
 import { assertMainOrNodeBoot } from "../api/common/Env"
 
 export type TranslationKey = TranslationKeyType
-export type TranslationText = TranslationKey | lazy<string>
+export type TranslationText = TranslationKey | ResolvedTranslation
 export type ResolvedTranslation = {
-	id: TranslationKey | string
+	key: TranslationKey | string
 	text: string
 }
 assertMainOrNodeBoot()
@@ -528,16 +527,30 @@ export class LanguageViewModel {
 		return text
 	}
 
-	getMaybeLazy(value: TranslationText): string {
-		return typeof value === "function" ? value() : lang.get(value)
+	getMaybeLazy(key: TranslationText): ResolvedTranslation {
+		if (typeof key === "object") {
+			return key
+		} else {
+			let text = lang.get(key)
+			return { key, text }
+		}
 	}
 
-	testId(value: ResolvedTranslation | TranslationKey) {
-		return typeof value === "object" ? (value as ResolvedTranslation).id : (value as TranslationKey)
+	testId(value: TranslationText) {
+		return typeof value === "object" ? (value as ResolvedTranslation).key : (value as TranslationKey)
 	}
 
-	resolveToTranslation(value: ResolvedTranslation | TranslationKey) {
-		return typeof value === "object" ? (value as ResolvedTranslation).text : lang.getMaybeLazy(value as TranslationKey)
+	resolveToTranslation(value: TranslationText) {
+		return typeof value === "object" ? (value as ResolvedTranslation).text : lang.getMaybeLazy(value as TranslationKey).text
+	}
+
+	makeResolved(key: string, unresolved: string | lazy<string>): ResolvedTranslation {
+		let text = typeof unresolved === "function" ? unresolved() : unresolved
+		return { key, text }
+	}
+
+	getResolved(id: TranslationKey, replacements?: Record<string, string | number>) {
+		return { key: id, text: this.get(id, replacements) }
 	}
 }
 

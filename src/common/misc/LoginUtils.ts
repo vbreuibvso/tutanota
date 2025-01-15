@@ -71,9 +71,7 @@ export function checkApprovalStatus(logins: LoginController, includeInvoiceNotPa
 			} else if (status === ApprovalStatus.INVOICE_NOT_PAID) {
 				if (logins.getUserController().isGlobalAdmin()) {
 					if (includeInvoiceNotPaidForAdmin) {
-						return Dialog.message(() => {
-							return lang.get("invoiceNotPaid_msg")
-						})
+						return Dialog.message("invoiceNotPaid_msg")
 							.then(() => {
 								// TODO: navigate to payment site in settings
 								//m.route.set("/settings")
@@ -84,7 +82,7 @@ export function checkApprovalStatus(logins: LoginController, includeInvoiceNotPa
 						return true
 					}
 				} else {
-					const errorMessage = () => lang.get("invoiceNotPaidUser_msg") + " " + lang.get("contactAdmin_msg")
+					const errorMessage = lang.makeResolved("invoiceNotPaidUser_msg", lang.get("invoiceNotPaidUser_msg") + " " + lang.get("contactAdmin_msg"))
 
 					return Dialog.message(errorMessage).then(() => false)
 				}
@@ -127,10 +125,9 @@ export function getLoginErrorMessage(error: Error, isExternalLogin: boolean): Tr
 			return "emptyString_msg"
 
 		case CredentialAuthenticationError:
-			return () =>
-				lang.get("couldNotUnlockCredentials_msg", {
-					"{reason}": error.message,
-				})
+			return lang.getResolved("couldNotUnlockCredentials_msg", {
+				"{reason}": error.message,
+			})
 
 		case ConnectionError:
 			return "connectionLostLong_msg"

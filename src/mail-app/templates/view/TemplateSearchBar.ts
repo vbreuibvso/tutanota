@@ -1,5 +1,5 @@
 import m, { Children, ClassComponent, Component, Vnode } from "mithril"
-import type { TranslationKey } from "../../../common/misc/LanguageViewModel"
+import type { TranslationKey, TranslationText } from "../../../common/misc/LanguageViewModel"
 import { lang } from "../../../common/misc/LanguageViewModel"
 import { inputLineHeight, px } from "../../../common/gui/size"
 import { keyboardEventToKeyPress, keyHandler } from "../../../common/misc/KeyManager"
@@ -10,7 +10,7 @@ import { assertNotNull } from "@tutao/tutanota-utils"
 
 export type TemplateSearchBarAttrs = {
 	value: Stream<string>
-	placeholder?: TranslationKey | lazy<string>
+	placeholder?: TranslationText
 	oninput?: (value: string, input: HTMLInputElement) => unknown
 	keyHandler?: keyHandler
 }

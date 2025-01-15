@@ -1,5 +1,5 @@
 import { AccessExpiredError, BadRequestError, NotAuthenticatedError } from "../api/common/error/RestError"
-import type { TranslationText } from "../misc/LanguageViewModel.js"
+import { lang, TranslationText } from "../misc/LanguageViewModel.js"
 import { SecondFactorHandler } from "../misc/2fa/SecondFactorHandler.js"
 import { getLoginErrorMessage, handleExpectedLoginError } from "../misc/LoginUtils.js"
 import type { LoginController } from "../api/main/LoginController"
@@ -360,7 +360,7 @@ export class LoginViewModel implements ILoginViewModel {
 				// The app already shows a dialog with FAQ link so we don't have to explain
 				// much here, just catching it to avoid unexpected error dialog
 				this.state = LoginState.NotAuthenticated
-				this.helpText = () => "Could not access secret storage"
+				this.helpText = lang.makeResolved("help_text", "Could not access secret storage")
 			} else {
 				await this.onLoginFailed(e)
 			}

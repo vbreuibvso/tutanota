@@ -102,8 +102,7 @@ export async function handleUncaughtErrorImpl(e: Error) {
 		if (logins.getUserController().isGlobalAdmin()) {
 			showMoreStorageNeededOrderDialog("insufficientStorageAdmin_msg")
 		} else {
-			const errorMessage = () => lang.get("insufficientStorageUser_msg") + " " + lang.get("contactAdmin_msg")
-
+			const errorMessage = lang.makeResolved("insufficientStorageUser_msg", lang.get("insufficientStorageUser_msg") + " " + lang.get("contactAdmin_msg"))
 			Dialog.message(errorMessage)
 		}
 	} else if (e instanceof ServiceUnavailableError) {
@@ -215,7 +214,7 @@ export async function reloginForExpiredSession() {
 					e instanceof ConnectionError
 				) {
 					const { getLoginErrorMessage } = await import("../misc/LoginUtils.js")
-					return lang.getMaybeLazy(getLoginErrorMessage(e, false))
+					return lang.getMaybeLazy(getLoginErrorMessage(e, false)).text
 				} else {
 					throw e
 				}
@@ -260,19 +259,16 @@ function handleImportError() {
 	showingImportError = true
 	const message =
 		"There was an error while loading part of the app. It might be that you are offline, running an outdated version, or your browser is blocking the request."
-	Dialog.choice(
-		() => message,
-		[
-			{
-				text: "close_alt",
-				value: false,
-			},
-			{
-				text: "reloadPage_action",
-				value: true,
-			},
-		],
-	).then((reload) => {
+	Dialog.choice(lang.makeResolved("error_msg", message), [
+		{
+			text: "close_alt",
+			value: false,
+		},
+		{
+			text: "reloadPage_action",
+			value: true,
+		},
+	]).then((reload) => {
 		showingImportError = false
 
 		if (reload) {
@@ -287,5 +283,5 @@ if (typeof window !== "undefined") {
 }
 
 export function showUserError(error: UserError): Promise<void> {
-	return Dialog.message(() => error.message)
+	return Dialog.message(lang.makeResolved("error_msg", error.message))
 }

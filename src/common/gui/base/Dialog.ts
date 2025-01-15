@@ -44,13 +44,13 @@ export const enum DialogType {
 type Validator = () => $Promisable<TranslationKey | null>
 
 export type ActionDialogProps = {
-	title: lazy<string> | string
+	title: TranslationText
 	child: Component | lazy<Children>
 	validator?: Validator | null
 	okAction: null | ((arg0: Dialog) => unknown)
 	allowCancel?: MaybeLazy<boolean>
 	allowOkWithReturn?: boolean
-	okActionTextId?: MaybeLazy<TranslationKey>
+	okActionTextId?: TranslationText
 	cancelAction?: ((arg0: Dialog) => unknown) | null
 	cancelActionTextId?: TranslationKey
 	type?: DialogType
@@ -348,11 +348,11 @@ export class Dialog implements ModalComponent {
 	/**
 	 * show a dialog with only a "ok" button
 	 *
-	 * @param messageIdOrMessageFunction {TranslationKey | lazy<string>} the text to display
+	 * @param messageIdOrMessageFunction the text to display
 	 * @param infoToAppend {?string | lazy<Children>} some text or UI elements to show below the message
 	 * @returns {Promise<void>} a promise that resolves after the dialog is fully closed
 	 */
-	static message(messageIdOrMessageFunction: TranslationKey | lazy<string>, infoToAppend?: string | lazy<Children>): Promise<void> {
+	static message(messageIdOrMessageFunction: TranslationText, infoToAppend?: string | lazy<Children>): Promise<void> {
 		return new Promise((resolve) => {
 			let dialog: Dialog
 
@@ -361,7 +361,7 @@ export class Dialog implements ModalComponent {
 				setTimeout(() => resolve(), DefaultAnimationTime)
 			}
 
-			let lines = lang.getMaybeLazy(messageIdOrMessageFunction).split("\n")
+			let lines = lang.getMaybeLazy(messageIdOrMessageFunction).text.split("\n")
 
 			if (typeof infoToAppend === "string") {
 				lines.push(infoToAppend)
@@ -444,7 +444,7 @@ export class Dialog implements ModalComponent {
 	 * @return Promise, which is resolved with user selection - true for confirm, false for cancel.
 	 */
 	static confirm(
-		messageIdOrMessageFunction: TranslationKey | lazy<string>,
+		messageIdOrMessageFunction: TranslationText,
 		confirmId: TranslationKey = "ok_action",
 		infoToAppend?: string | lazy<Children>,
 	): Promise<boolean> {
@@ -479,7 +479,7 @@ export class Dialog implements ModalComponent {
 	 * @param infoToAppend additional UI elements to show below the message
 	 */
 	static confirmMultiple(
-		messageIdOrMessageFunction: TranslationKey | lazy<string>,
+		messageIdOrMessageFunction: TranslationText,
 		buttons: ReadonlyArray<ButtonAttrs>,
 		onclose?: (positive: boolean) => unknown,
 		infoToAppend?: string | lazy<Children>,
@@ -500,7 +500,7 @@ export class Dialog implements ModalComponent {
 					? infoToAppend()
 					: null
 
-			return [lang.getMaybeLazy(messageIdOrMessageFunction), additionalChild]
+			return [lang.getMaybeLazy(messageIdOrMessageFunction).text, additionalChild]
 		}
 
 		dialog = new Dialog(DialogType.Alert, {
@@ -581,7 +581,7 @@ export class Dialog implements ModalComponent {
 
 			// Wrap in a function to ensure that m() is called in every view() update for the infoToAppend
 			function getContent(): Children {
-				return lang.getMaybeLazy(message)
+				return lang.getMaybeLazy(message).text
 			}
 
 			const dialog = new Dialog(DialogType.Alert, {
@@ -651,7 +651,7 @@ export class Dialog implements ModalComponent {
 						type: ButtonType.Primary,
 					},
 				],
-				middle: title,
+				middle: { key: "title", text: title() },
 			}
 			saveDialog = new Dialog(DialogType.EditMedium, {
 				view: () => m("", [m(DialogHeaderBar, actionBarAttrs), m(".plr-l.pb.text-break", m(child))]),
@@ -788,13 +788,13 @@ export class Dialog implements ModalComponent {
 			right: okAction
 				? [
 						{
-							label: mapLazily(okActionTextId, (id) => lang.get(id)),
+							label: okActionTextId,
 							click: doAction,
 							type: ButtonType.Primary,
 						},
 				  ]
 				: [],
-			middle: typeof title === "function" ? title : () => title,
+			middle: lang.getMaybeLazy(title),
 		}
 		dialog = new Dialog(type, {
 			view: () => [
@@ -839,14 +839,14 @@ export class Dialog implements ModalComponent {
 
 		let result = props.defaultValue ?? ""
 		Dialog.showActionDialog({
-			title: lang.getMaybeLazy(props.title),
+			title: props.title,
 			child: () =>
 				m(TextField, {
 					label: props.label,
 					value: result,
 					type: textFieldType,
 					oninput: (newValue) => (result = newValue),
-					helpLabel: () => (props.infoMsgId ? lang.getMaybeLazy(props.infoMsgId) : ""),
+					helpLabel: () => (props.infoMsgId ? lang.getMaybeLazy(props.infoMsgId).text : ""),
 				}),
 			validator: () => (props.inputValidator ? props.inputValidator(result) : null),
 			allowOkWithReturn: true,
@@ -874,14 +874,14 @@ export class Dialog implements ModalComponent {
 	 */
 	static showTextAreaInputDialog(
 		titleId: TranslationKey,
-		labelIdOrLabelFunction: TranslationKey | lazy<string>,
+		labelIdOrLabelFunction: TranslationText,
 		infoMsgId: TranslationKey | null,
 		value: string,
 	): Promise<string> {
 		return new Promise((resolve) => {
 			let result: string = value
 			Dialog.showActionDialog({
-				title: lang.get(titleId),
+				title: titleId,
 				child: {
 					view: () =>
 						m(TextField, {
@@ -921,7 +921,7 @@ export class Dialog implements ModalComponent {
 		let selectedValue: T = initialValue
 		return new Promise((resolve) => {
 			Dialog.showActionDialog({
-				title: lang.get(titleId),
+				title: titleId,
 				child: {
 					view: () =>
 						// identity as type assertion
@@ -1009,7 +1009,7 @@ export class Dialog implements ModalComponent {
 						type: ButtonType.Secondary,
 					},
 				],
-				middle: () => lang.getMaybeLazy(title),
+				middle: title,
 			}
 			dialog = Dialog.editDialog(headerAttrs, child, childAttrs)
 				.setCloseHandler(close)

@@ -84,7 +84,7 @@ export async function showPlanUpgradeRequiredDialog(acceptedPlans: AvailablePlan
 		showNotAvailableForFreeDialog(acceptedPlans)
 		return false
 	} else if (!userController.isGlobalAdmin()) {
-		Dialog.message(() => lang.get("contactAdmin_msg"))
+		Dialog.message("contactAdmin_msg")
 		return false
 	} else {
 		if (reason == null) {

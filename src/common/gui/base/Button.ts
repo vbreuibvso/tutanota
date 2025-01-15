@@ -1,5 +1,5 @@
 import m, { Children, ClassComponent, CVnode } from "mithril"
-import type { TranslationKey } from "../../misc/LanguageViewModel"
+import type { ResolvedTranslation, TranslationKey, TranslationText } from "../../misc/LanguageViewModel"
 import { lang } from "../../misc/LanguageViewModel"
 import { getElevatedBackground, theme } from "../theme"
 import type { lazy } from "@tutao/tutanota-utils"
@@ -62,8 +62,8 @@ export function getColors(buttonColors: ButtonColor | null | undefined): {
 }
 
 export interface ButtonAttrs {
-	label: TranslationKey | lazy<string>
-	title?: TranslationKey | lazy<string>
+	label: TranslationText
+	title?: TranslationText
 	click?: ClickHandler
 	type: ButtonType
 	colors?: ButtonColor
@@ -74,13 +74,12 @@ export interface ButtonAttrs {
  */
 export class Button implements ClassComponent<ButtonAttrs> {
 	view({ attrs }: CVnode<ButtonAttrs>): Children {
-		const getKey = lang.getMaybeLazy
-		const title = attrs.title == null ? getKey(attrs.label) : getKey(attrs.title)
 		let classes = this.resolveClasses(attrs.type)
 
+		let maybeLazy = lang.getMaybeLazy(attrs.label)
 		return m(BaseButton, {
-			label: title,
-			text: getKey(attrs.label),
+			label: attrs.title == null ? attrs.label : attrs.title,
+			text: maybeLazy.text,
 			class: classes.join(" "),
 			style: {
 				borderColor: getColors(attrs.colors).border,

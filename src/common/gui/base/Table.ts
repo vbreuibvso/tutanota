@@ -76,9 +76,10 @@ export class Table implements Component<TableAttrs> {
 									cells: () =>
 										a.columnHeading!.map((header) => {
 											const text = this.isTableHeading(header) ? header.text : header
-											const info = this.isTableHeading(header) && header.helpText ? [lang.getMaybeLazy(header.helpText)] : undefined
+											const info =
+												this.isTableHeading(header) && header.helpText ? [lang.resolveToTranslation(header.helpText)] : undefined
 											return {
-												main: lang.getMaybeLazy(text),
+												main: lang.resolveToTranslation(text),
 												info: info,
 											} satisfies CellTextData
 										}),

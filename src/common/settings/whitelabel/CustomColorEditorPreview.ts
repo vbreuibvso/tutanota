@@ -45,24 +45,24 @@ export class CustomColorEditorPreview implements Component {
 				),
 				m(".pt", [
 					m(Button, {
-						label: () => "Secondary",
+						label: { key: "secondary", text: "Secondary" },
 						click: noOp,
 						type: ButtonType.Secondary,
 					}),
 					m(Button, {
-						label: () => "Primary",
+						label: { key: "primary", text: "Primary" },
 						click: noOp,
 						type: ButtonType.Primary,
 					}),
 				]),
 				m(".pt", [
 					m(IconButton, {
-						title: () => "Icon button",
+						title: { key: "icon_button", text: "Icon button" },
 						icon: Icons.Folder,
 						click: noOp,
 					}),
 					m(ToggleButton, {
-						title: () => "Toggle button",
+						title: { key: "toggle_button", text: "Toggle button" },
 						icon: this.toggleSelected ? Icons.Lock : Icons.Unlock,
 						toggled: this.toggleSelected,
 						onToggled: () => (this.toggleSelected = !this.toggleSelected),

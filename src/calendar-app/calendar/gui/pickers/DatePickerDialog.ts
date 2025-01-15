@@ -1,6 +1,6 @@
 import m, { Component } from "mithril"
 import { Dialog, DialogType } from "../../../../common/gui/base/Dialog.js"
-import { lang } from "../../../../common/misc/LanguageViewModel.js"
+import { lang, ResolvedTranslation } from "../../../../common/misc/LanguageViewModel.js"
 import { DatePicker } from "./DatePicker.js"
 import { px, size } from "../../../../common/gui/size.js"
 import { client } from "../../../../common/misc/ClientDetector.js"
@@ -22,7 +22,13 @@ export function showDateRangeSelectionDialog<T>(
 	start: Date
 	end: Date
 }> {
-	const helpLabel = (date: Date | null) => (date != null ? () => formatDateWithWeekdayAndYear(date) : "unlimited_label")
+	const helpLabel = (date: Date | null): ResolvedTranslation =>
+		date != null
+			? {
+					key: "date",
+					text: formatDateWithWeekdayAndYear(date),
+			  }
+			: lang.getMaybeLazy("unlimited_label")
 
 	const validateDates = debounceStart(750, (startDate, endDate) => {
 		warning = dateValidator(startDate, endDate)
@@ -71,7 +77,7 @@ export function showDateRangeSelectionDialog<T>(
 	}
 	return new Promise((resolve) => {
 		let dialog = Dialog.showActionDialog({
-			title: lang.get("selectPeriodOfTime_label"),
+			title: "selectPeriodOfTime_label",
 			child: form,
 			allowOkWithReturn: true,
 			okAction: () =>

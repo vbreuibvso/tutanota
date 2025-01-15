@@ -158,7 +158,7 @@ export async function loadSignupWizard(
 		}
 		message =
 			appstoreSubscriptionOwnership != MobilePaymentSubscriptionOwnership.NoSubscription
-				? () => lang.get("storeMultiSubscriptionError_msg", { "{AppStorePayment}": InfoLink.AppStorePayment })
+				? lang.getResolved("storeMultiSubscriptionError_msg", { "{AppStorePayment}": InfoLink.AppStorePayment })
 				: null
 	} else {
 		message = null

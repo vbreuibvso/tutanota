@@ -23,8 +23,8 @@ export interface RowButtonAttrs {
 export class RowButton implements Component<RowButtonAttrs> {
 	view(vnode: Vnode<RowButtonAttrs>) {
 		const attrs = vnode.attrs
-		const label = lang.getMaybeLazy(attrs.label)
-		const text = lang.getMaybeLazy(attrs.text ?? attrs.label)
+		const label = lang.resolveToTranslation(attrs.label)
+		const text = lang.resolveToTranslation(attrs.text ?? attrs.label)
 		const color = attrs.selected ? theme.content_button_selected : theme.content_button
 		return m(BaseButton, {
 			label: attrs.label,

@@ -8,7 +8,7 @@ import { lang, ResolvedTranslation, TranslationKey, TranslationText } from "../.
 // `staticRightText` to be passed as a child
 export interface BaseButtonAttrs {
 	/** accessibility & tooltip description */
-	label: ResolvedTranslation | TranslationKey
+	label: TranslationText
 	/** visible text inside button */
 	text?: Children
 	icon?: Children

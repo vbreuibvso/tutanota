@@ -1,5 +1,5 @@
 import m, { Children, Component, Vnode } from "mithril"
-import type { TranslationKey } from "../../misc/LanguageViewModel"
+import type { TranslationKey, TranslationText } from "../../misc/LanguageViewModel"
 import { lang } from "../../misc/LanguageViewModel"
 import { theme } from "../theme"
 import { inputLineHeight, px, size } from "../size"
@@ -7,7 +7,7 @@ import type { lazy } from "@tutao/tutanota-utils"
 
 export type TextDisplayAreaAttrs = {
 	value: string
-	label: TranslationKey | lazy<string>
+	label: TranslationText
 }
 
 /**
@@ -23,7 +23,7 @@ export class TextDisplayArea implements Component<TextDisplayAreaAttrs> {
 						fontSize: px(size.font_size_small),
 					},
 				},
-				lang.getMaybeLazy(vnode.attrs.label),
+				lang.resolveToTranslation(vnode.attrs.label),
 			),
 			m(
 				".text-pre.flex-grow",

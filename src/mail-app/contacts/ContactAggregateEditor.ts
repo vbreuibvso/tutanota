@@ -17,7 +17,7 @@ export type AggregateEditorAttrs<AggregateType> = {
 	allowCancel?: boolean
 	fieldType: TextFieldType
 	onUpdate: (newValue: string) => unknown
-	label: string
+	label: TranslationText
 	helpLabel: TranslationText
 	typeLabels: ReadonlyArray<[AggregateType, TranslationKey]>
 	onTypeSelected: (arg0: AggregateType) => unknown
@@ -36,20 +36,13 @@ export class ContactAggregateEditor implements Component<AggregateEditorAttrs<an
 
 	view(vnode: Vnode<AggregateEditorAttrs<any>>): Children {
 		const attrs = vnode.attrs
-		const helpLabel = () => {
-			if (typeof attrs.helpLabel === "function") {
-				return attrs.helpLabel()
-			}
-
-			return lang.get(attrs.helpLabel)
-		}
 		return m(".flex.items-center.child-grow", [
 			m(TextField, {
 				value: attrs.value,
-				label: () => attrs.label,
+				label: attrs.label,
 				type: attrs.fieldType,
 				autocapitalize: attrs.autocapitalizeTextField,
-				helpLabel: () => helpLabel(),
+				helpLabel: () => lang.getMaybeLazy(attrs.helpLabel).text,
 				injectionsRight: () => this._moreButtonFor(attrs),
 				oninput: (value) => attrs.onUpdate(value),
 			}),

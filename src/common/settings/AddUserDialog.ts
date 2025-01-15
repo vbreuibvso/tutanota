@@ -1,5 +1,5 @@
 import m from "mithril"
-import { lang, TranslationText } from "../misc/LanguageViewModel.js"
+import { lang, TranslationKey, TranslationText } from "../misc/LanguageViewModel.js"
 import { BookingItemFeatureType, NewPaidPlans } from "../api/common/TutanotaConstants.js"
 import { Dialog } from "../gui/base/Dialog.js"
 import { PasswordForm, PasswordModel } from "./PasswordForm.js"
@@ -44,7 +44,10 @@ export async function show(): Promise<void> {
 					availableDomains,
 					onDomainChanged: (domain) => {
 						if (domain.isPaid && !onNewPaidPlan) {
-							showUpgradeWizard(locator.logins, NewPaidPlans, () => `${lang.get("paidEmailDomainLegacy_msg")}\n${lang.get("changePaidPlan_msg")}`)
+							showUpgradeWizard(locator.logins, NewPaidPlans, {
+								key: "change_to_new_plan",
+								text: `${lang.get("paidEmailDomainLegacy_msg")}\n${lang.get("changePaidPlan_msg")}`,
+							})
 						} else {
 							selectedDomain = domain
 						}
@@ -71,7 +74,7 @@ export async function show(): Promise<void> {
 		const passwordFormError = passwordModel.getErrorMessageId()
 
 		if (errorMsg) {
-			Dialog.message(errorMsg)
+			Dialog.message(errorMsg as TranslationKey)
 			return
 		} else if (passwordFormError) {
 			Dialog.message(passwordFormError)
@@ -103,11 +106,10 @@ export async function show(): Promise<void> {
 					operation.id,
 				)
 				showProgressDialog(
-					() =>
-						lang.get("createActionStatus_msg", {
-							"{index}": 0,
-							"{count}": 1,
-						}),
+					lang.getResolved("createActionStatus_msg", {
+						"{index}": 0,
+						"{count}": 1,
+					}),
 					p,
 					operation.progress,
 				)
@@ -119,7 +121,7 @@ export async function show(): Promise<void> {
 	}
 
 	Dialog.showActionDialog({
-		title: lang.get("addUsers_action"),
+		title: "addUsers_action",
 		child: form,
 		okAction: addUserOkAction,
 	})

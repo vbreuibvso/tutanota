@@ -221,7 +221,7 @@ export class ExternalLoginView extends BaseTopLevelView implements TopLevelView<
 		if (this.viewModel.autologinInProgress) {
 			return m("p.center", progressIcon())
 		} else if (this.viewModel.errorMessageId) {
-			return m("p.center", m(MessageBox, {}, lang.getMaybeLazy(this.viewModel.errorMessageId)))
+			return m("p.center", m(MessageBox, {}, lang.getMaybeLazy(this.viewModel.errorMessageId).text))
 		} else {
 			return [
 				m(".flex.col.content-bg.border-radius-big.plr-2l.mt", [
@@ -254,7 +254,7 @@ export class ExternalLoginView extends BaseTopLevelView implements TopLevelView<
 			}),
 			m(Checkbox, {
 				label: () => lang.get("storePassword_action"),
-				helpLabel: () => lang.get("onlyPrivateComputer_msg"),
+				helpLabel: "onlyPrivateComputer_msg",
 				checked: this.viewModel.doSavePassword,
 				onChecked: (checked) => (this.viewModel.doSavePassword = checked),
 			}),

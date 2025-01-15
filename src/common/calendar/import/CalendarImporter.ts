@@ -74,7 +74,7 @@ export function showEventsImportDialog(events: CalendarEvent[], okAction: (dialo
 						},
 					},
 				],
-				middle: () => lang.getMaybeLazy(title),
+				middle: title,
 				right: [
 					{
 						type: ButtonType.Primary,
@@ -165,7 +165,7 @@ export function calendarSelectionDialog(
 						},
 					},
 				],
-				middle: () => lang.getMaybeLazy("calendar_label"),
+				middle: "calendar_label",
 				right: [
 					{
 						type: ButtonType.Primary,

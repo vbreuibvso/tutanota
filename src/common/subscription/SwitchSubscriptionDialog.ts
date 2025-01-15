@@ -83,7 +83,7 @@ export async function showSwitchDialog(
 			},
 		],
 		right: [],
-		middle: () => lang.get("subscription_label"),
+		middle: "subscription_label",
 	}
 	const currentPlanInfo = model.currentPlanInfo
 	const businessUse = stream(currentPlanInfo.businessUse)
@@ -220,7 +220,7 @@ function createPlanButton(
 			// Show an extra dialog in the case that someone is upgrading from a legacy plan to a new plan because they can't revert.
 			if (
 				LegacyPlans.includes(currentPlanInfo.planType) &&
-				!(await Dialog.confirm(() => lang.get("upgradePlan_msg", { "{plan}": PlanTypeToName[targetSubscription] })))
+				!(await Dialog.confirm(lang.getResolved("upgradePlan_msg", { "{plan}": PlanTypeToName[targetSubscription] })))
 			) {
 				return
 			}
@@ -302,8 +302,8 @@ function handleSwitchAccountPreconditionFailed(e: PreconditionFailedError): Prom
 				throw e
 		}
 
-		return Dialog.message(() =>
-			lang.get("accountSwitchNotPossible_msg", {
+		return Dialog.message(
+			lang.getResolved("accountSwitchNotPossible_msg", {
 				"{detailMsg}": detailMsg,
 			}),
 		)
