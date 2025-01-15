@@ -308,7 +308,7 @@ export class TemplatePopup implements ModalComponent {
 				childAttrs: () =>
 					writeableGroups.map((groupInstances) => {
 						return {
-							label: { key: "group_name", text: getSharedGroupName(groupInstances.groupInfo, locator.logins.getUserController(), true) },
+							label: lang.makeResolved("group_name", getSharedGroupName(groupInstances.groupInfo, locator.logins.getUserController(), true)),
 							click: () => this.showTemplateEditor(null, groupInstances.groupRoot),
 						}
 					}),

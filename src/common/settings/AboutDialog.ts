@@ -3,7 +3,7 @@ import { Button, ButtonType } from "../gui/base/Button.js"
 import { getLightOrDarkTutaLogo } from "../gui/theme.js"
 import { showUserError } from "../misc/ErrorHandlerImpl.js"
 import { locator } from "../api/main/CommonLocator.js"
-import { InfoLink } from "../misc/LanguageViewModel.js"
+import { InfoLink, lang } from "../misc/LanguageViewModel.js"
 import { newMailEditorFromTemplate } from "../../mail-app/mail/editor/MailEditor.js"
 import { UserError } from "../api/main/UserError.js"
 import { clientInfoString, getLogAttachments } from "../misc/ErrorReporter.js"
@@ -51,7 +51,7 @@ export class AboutDialog implements Component<AboutDialogAttrs> {
 				? m(
 						"",
 						m(Button, {
-							label: { key: "", text: "Show welcome dialog" },
+							label: lang.makeResolved("welcome_label", "Show welcome dialog"),
 							type: ButtonType.Primary,
 							click: vnode.attrs.onShowSetupWizard,
 						}),

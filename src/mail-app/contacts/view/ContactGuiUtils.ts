@@ -21,10 +21,10 @@ export const ContactMailAddressTypeToLabel: Record<ContactAddressType, Translati
 
 export function getContactAddressTypeLabel(type: ContactAddressType, custom: string): ResolvedTranslation {
 	if (type === ContactAddressType.CUSTOM) {
-		return { key: "custom", text: custom }
+		return lang.makeResolved("custom", custom)
 	} else {
 		let key = ContactMailAddressTypeToLabel[type]
-		return { key: key, text: lang.get(key) }
+		return lang.makeResolved(key, key)
 	}
 }
 
@@ -39,10 +39,10 @@ export const ContactPhoneNumberTypeToLabel: Record<ContactPhoneNumberType, Trans
 
 export function getContactPhoneNumberTypeLabel(type: ContactPhoneNumberType, custom: string): ResolvedTranslation {
 	if (type === ContactPhoneNumberType.CUSTOM) {
-		return { key: "custom", text: custom }
+		return lang.makeResolved("custom", custom)
 	} else {
 		let key = ContactPhoneNumberTypeToLabel[type]
-		return { key: key, text: lang.get(key) }
+		return lang.makeResolved(key, key)
 	}
 }
 
@@ -57,10 +57,10 @@ export const ContactSocialTypeToLabel: Record<ContactSocialType, TranslationKey>
 
 export function getContactSocialTypeLabel(type: ContactSocialType, custom: string): ResolvedTranslation {
 	if (type === ContactSocialType.CUSTOM) {
-		return { key: "custom", text: custom }
+		return lang.makeResolved("custom", custom)
 	} else {
 		let key = ContactSocialTypeToLabel[type]
-		return { key: key, text: lang.get(key) }
+		return lang.makeResolved(key, key)
 	}
 }
 
@@ -81,10 +81,10 @@ export const ContactRelationshipTypeToLabel: Record<ContactRelationshipType, Tra
 
 export function getContactRelationshipTypeToLabel(type: ContactRelationshipType, custom: string): ResolvedTranslation {
 	if (type === ContactRelationshipType.CUSTOM) {
-		return { key: "custom", text: custom }
+		return lang.makeResolved("custom", custom)
 	} else {
 		let key = ContactRelationshipTypeToLabel[type]
-		return { key: key, text: lang.get(key) }
+		return lang.makeResolved(key, key)
 	}
 }
 
@@ -99,10 +99,10 @@ export const ContactMessengerHandleTypeToLabel: Record<ContactMessengerHandleTyp
 
 export function getContactMessengerHandleTypeToLabel(type: ContactMessengerHandleType, custom: string): ResolvedTranslation {
 	if (type === ContactMessengerHandleType.CUSTOM) {
-		return { key: "custom", text: custom }
+		return lang.makeResolved("custom", custom)
 	} else {
 		let key = ContactMessengerHandleTypeToLabel[type]
-		return { key: key, text: lang.get(key) }
+		return lang.makeResolved(key, key)
 	}
 }
 
@@ -114,10 +114,10 @@ export const ContactCustomDateTypeToLabel: Record<ContactCustomDateType, Transla
 
 export function getContactCustomDateTypeToLabel(type: ContactCustomDateType, custom: string): ResolvedTranslation {
 	if (type === ContactCustomDateType.CUSTOM) {
-		return { key: "custom", text: custom }
+		return lang.makeResolved("custom", custom)
 	} else {
 		let key = ContactCustomDateTypeToLabel[type]
-		return { key: key, text: lang.get(key) }
+		return lang.makeResolved(key, key)
 	}
 }
 
@@ -130,10 +130,10 @@ export const ContactCustomWebsiteTypeToLabel: Record<ContactWebsiteType, Transla
 
 export function getContactCustomWebsiteTypeToLabel(type: ContactWebsiteType, custom: string): ResolvedTranslation {
 	if (type === ContactWebsiteType.CUSTOM) {
-		return { key: "custom", text: custom }
+		return lang.makeResolved("custom", custom)
 	} else {
 		let key = ContactCustomWebsiteTypeToLabel[type]
-		return { key: key, text: lang.get(key) }
+		return lang.makeResolved(key, key)
 	}
 }
 

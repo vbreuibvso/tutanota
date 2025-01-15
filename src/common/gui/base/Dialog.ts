@@ -651,7 +651,7 @@ export class Dialog implements ModalComponent {
 						type: ButtonType.Primary,
 					},
 				],
-				middle: { key: "title", text: title() },
+				middle: lang.makeResolved("title", title()),
 			}
 			saveDialog = new Dialog(DialogType.EditMedium, {
 				view: () => m("", [m(DialogHeaderBar, actionBarAttrs), m(".plr-l.pb.text-break", m(child))]),

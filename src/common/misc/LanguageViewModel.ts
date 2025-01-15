@@ -6,7 +6,7 @@ import { assertMainOrNodeBoot } from "../api/common/Env"
 export type TranslationKey = TranslationKeyType
 export type TranslationText = TranslationKey | ResolvedTranslation
 export type ResolvedTranslation = {
-	key: TranslationKey | string
+	tkey: TranslationKey | string
 	text: string
 }
 assertMainOrNodeBoot()
@@ -527,30 +527,30 @@ export class LanguageViewModel {
 		return text
 	}
 
-	getMaybeLazy(key: TranslationText): ResolvedTranslation {
-		if (typeof key === "object") {
-			return key
+	getMaybeLazy(tkey: TranslationText): ResolvedTranslation {
+		if (typeof tkey === "object") {
+			return tkey
 		} else {
-			let text = lang.get(key)
-			return { key, text }
+			let text = lang.get(tkey)
+			return { tkey, text }
 		}
 	}
 
 	testId(value: TranslationText) {
-		return typeof value === "object" ? (value as ResolvedTranslation).key : (value as TranslationKey)
+		return typeof value === "object" ? (value as ResolvedTranslation).tkey : (value as TranslationKey)
 	}
 
 	resolveToTranslation(value: TranslationText) {
 		return typeof value === "object" ? (value as ResolvedTranslation).text : lang.getMaybeLazy(value as TranslationKey).text
 	}
 
-	makeResolved(key: string, unresolved: string | lazy<string>): ResolvedTranslation {
+	makeResolved(tkey: string, unresolved: string | lazy<string>): ResolvedTranslation {
 		let text = typeof unresolved === "function" ? unresolved() : unresolved
-		return { key, text }
+		return { tkey, text }
 	}
 
 	getResolved(id: TranslationKey, replacements?: Record<string, string | number>) {
-		return { key: id, text: this.get(id, replacements) }
+		return { tkey: id, text: this.get(id, replacements) }
 	}
 }
 

@@ -28,7 +28,7 @@ export async function showProgressDialog<T>(
 
 	const progressDialog = new Dialog(DialogType.Progress, {
 		view: () => {
-			let title = lang.getMaybeLazy(resolveMaybeLazy(messageIdOrMessageFunction))
+			let title = lang.resolveToTranslation(resolveMaybeLazy(messageIdOrMessageFunction))
 			return m("", [
 				isCancelable && headerBarAttrs
 					? m(DialogHeaderBar, {

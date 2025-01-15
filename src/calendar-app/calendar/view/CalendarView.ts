@@ -933,12 +933,12 @@ export class CalendarView extends BaseTopLevelView implements TopLevelView<Calen
 						: null,
 					(isApp() || isDesktop()) && isExternal
 						? {
-								label: { key: "sync_action", text: "Sync" },
+								label: lang.makeResolved("sync_action", "Sync"),
 								icon: Icons.Sync,
 								size: ButtonSize.Compact,
 								click: () => {
 									this.viewModel.forceSyncExternal(existingGroupSettings, true)?.catch(async (e) => {
-										await Dialog.message({ key: "confirm_msg", text: e.message })
+										await Dialog.message(lang.makeResolved("confirm_msg", e.message))
 									})
 								},
 						  }
@@ -969,18 +969,19 @@ export class CalendarView extends BaseTopLevelView implements TopLevelView<Calen
 		loadGroupMembers(calendarInfo.group, locator.entityClient).then((members) => {
 			const ownerMail = locator.logins.getUserController().userGroupInfo.mailAddress
 			const otherMembers = members.filter((member) => member.info.mailAddress !== ownerMail)
-			Dialog.confirm({
-				key: "confirm_msg",
-				text:
+			Dialog.confirm(
+				lang.makeResolved(
+					"confirm_msg",
 					(otherMembers.length > 0
 						? lang.get("deleteSharedCalendarConfirm_msg", {
 								"{calendar}": calendarName,
 						  }) + " "
 						: "") +
-					lang.get("deleteCalendarConfirm_msg", {
-						"{calendar}": calendarName,
-					}),
-			}).then((confirmed) => {
+						lang.get("deleteCalendarConfirm_msg", {
+							"{calendar}": calendarName,
+						}),
+				),
+			).then((confirmed) => {
 				if (confirmed) {
 					this.viewModel.deleteCalendar(calendarInfo).catch(ofClass(NotFoundError, () => console.log("Calendar to be deleted was not found.")))
 				}
@@ -1060,7 +1061,7 @@ export class CalendarView extends BaseTopLevelView implements TopLevelView<Calen
 			if (shouldSyncExternal)
 				this.viewModel.forceSyncExternal(existingGroupSettings)?.catch(async (e) => {
 					showSnackBar({
-						message: { key: "exception_msg", text: e.message },
+						message: lang.makeResolved("exception_msg", e.message),
 						button: {
 							label: "ok_action",
 							click: noOp,

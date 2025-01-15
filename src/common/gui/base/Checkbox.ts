@@ -23,7 +23,7 @@ export class Checkbox implements Component<CheckboxAttrs> {
 
 	view(vnode: Vnode<CheckboxAttrs>): Children {
 		const a = vnode.attrs
-		const helpLabelText = (a.helpLabel ? lang.getMaybeLazy(a.helpLabel) : { key: "empty", text: "" }).text
+		const helpLabelText = lang.getMaybeLazy(a.helpLabel ? a.helpLabel : "emptyString_msg").text
 		const helpLabel = a.helpLabel ? m(`small.block.content-fg${Checkbox.getBreakClass(helpLabelText)}`, helpLabelText) : []
 		const userClasses = a.class == null ? "" : " " + a.class
 		return m(

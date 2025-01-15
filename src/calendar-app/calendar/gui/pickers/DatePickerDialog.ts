@@ -23,12 +23,7 @@ export function showDateRangeSelectionDialog<T>(
 	end: Date
 }> {
 	const helpLabel = (date: Date | null): ResolvedTranslation =>
-		date != null
-			? {
-					key: "date",
-					text: formatDateWithWeekdayAndYear(date),
-			  }
-			: lang.getMaybeLazy("unlimited_label")
+		date != null ? lang.makeResolved("date", formatDateWithWeekdayAndYear(date)) : lang.getMaybeLazy("unlimited_label")
 
 	const validateDates = debounceStart(750, (startDate, endDate) => {
 		warning = dateValidator(startDate, endDate)

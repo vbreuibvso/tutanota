@@ -170,7 +170,7 @@ function renderCustomColorField(model: CustomColorsEditorViewModel, { name, valu
 		},
 		[
 			m(TextField, {
-				label: { key: name, text: name },
+				label: lang.makeResolved(name, name),
 				value: value,
 				injectionsRight: () =>
 					renderColorPicker((event) => model.addCustomization(name, downcast<HTMLInputElement>(event.target).value), processColorInputValue(value)),

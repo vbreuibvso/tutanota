@@ -44,10 +44,11 @@ export async function show(): Promise<void> {
 					availableDomains,
 					onDomainChanged: (domain) => {
 						if (domain.isPaid && !onNewPaidPlan) {
-							showUpgradeWizard(locator.logins, NewPaidPlans, {
-								key: "change_to_new_plan",
-								text: `${lang.get("paidEmailDomainLegacy_msg")}\n${lang.get("changePaidPlan_msg")}`,
-							})
+							showUpgradeWizard(
+								locator.logins,
+								NewPaidPlans,
+								lang.makeResolved("change_to_new_plan", `${lang.get("paidEmailDomainLegacy_msg")}\n${lang.get("changePaidPlan_msg")}`),
+							)
 						} else {
 							selectedDomain = domain
 						}

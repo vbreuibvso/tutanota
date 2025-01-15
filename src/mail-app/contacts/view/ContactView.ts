@@ -599,7 +599,7 @@ export class ContactView extends BaseTopLevelView implements TopLevelView<Contac
 
 	private renderContactListRow(contactListInfo: ContactListInfo, shared: boolean) {
 		const contactListButton: NavButtonAttrs = {
-			label: { key: "contactListName_label", text: contactListInfo.name },
+			label: lang.makeResolved("contactListName_label", contactListInfo.name),
 			icon: () => Icons.People,
 			href: () => `${CONTACTLIST_PREFIX}/${contactListInfo.groupRoot.entries}`,
 			disableHoverBackground: true,
@@ -669,10 +669,9 @@ export class ContactView extends BaseTopLevelView implements TopLevelView<Contac
 								icon: Icons.Trash,
 								click: async () => {
 									if (
-										await Dialog.confirm({
-											key: "confirm_msg",
-											text: lang.get("confirmLeaveSharedGroup_msg", { "{groupName}": contactListInfo.name }),
-										})
+										await Dialog.confirm(
+											lang.makeResolved("confirm_msg", lang.get("confirmLeaveSharedGroup_msg", { "{groupName}": contactListInfo.name })),
+										)
 									) {
 										return this.contactListViewModel.removeUserFromContactList(contactListInfo)
 									}
@@ -710,12 +709,14 @@ export class ContactView extends BaseTopLevelView implements TopLevelView<Contac
 				let deletePromise = Promise.resolve()
 
 				if (mergeableAndDuplicates.deletable.length > 0) {
-					deletePromise = Dialog.confirm({
-						key: "confirm_msg",
-						text: lang.get("duplicatesNotification_msg", {
-							"{1}": mergeableAndDuplicates.deletable.length,
-						}),
-					}).then((confirmed) => {
+					deletePromise = Dialog.confirm(
+						lang.makeResolved(
+							"confirm_msg",
+							lang.get("duplicatesNotification_msg", {
+								"{1}": mergeableAndDuplicates.deletable.length,
+							}),
+						),
+					).then((confirmed) => {
 						if (confirmed) {
 							// delete async in the background
 							for (const dc of mergeableAndDuplicates.deletable) {
@@ -727,7 +728,7 @@ export class ContactView extends BaseTopLevelView implements TopLevelView<Contac
 
 				deletePromise.then(() => {
 					if (mergeableAndDuplicates.mergeable.length === 0) {
-						Dialog.message({ key: "confirm_msg", text: lang.get("noSimilarContacts_msg") })
+						Dialog.message(lang.makeResolved("confirm_msg", lang.get("noSimilarContacts_msg")))
 					} else {
 						this._showMergeDialogs(mergeableAndDuplicates.mergeable).then((canceled) => {
 							if (!canceled) {

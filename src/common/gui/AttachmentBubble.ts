@@ -19,6 +19,7 @@ import { hasError } from "../api/common/utils/ErrorUtils.js"
 import { BubbleButton, bubbleButtonHeight, bubbleButtonPadding } from "./base/buttons/BubbleButton.js"
 import { BootIcons } from "./base/icons/BootIcons.js"
 import { CALENDAR_MIME_TYPE, MAIL_MIME_TYPES, VCARD_MIME_TYPES } from "../file/FileController.js"
+import { lang } from "../misc/LanguageViewModel.js"
 
 export enum AttachmentType {
 	GENERIC,
@@ -54,8 +55,8 @@ export class AttachmentBubble implements Component<AttachmentBubbleAttrs> {
 			return m(
 				BubbleButton,
 				{
-					label: { key: "attachment_name", text: attachment.name },
-					text: { key: "attachment_base_name", text: rest },
+					label: lang.makeResolved("attachment_name", attachment.name),
+					text: lang.makeResolved("attachment_base_name", rest),
 					icon: getAttachmentIcon(vnode.attrs.type),
 					onclick: () => {
 						showAttachmentDetailsPopup(this.dom!, vnode.attrs).then(() => this.dom?.focus())

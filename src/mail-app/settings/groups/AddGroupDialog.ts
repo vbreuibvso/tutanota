@@ -210,7 +210,7 @@ function addTemplateGroup(name: string): Promise<boolean> {
 						const plans = await getAvailablePlansWithTemplates()
 						showPlanUpgradeRequiredDialog(plans)
 					} else {
-						Dialog.message({ key: "confirm_msg", text: e.message })
+						Dialog.message(lang.makeResolved("confirm_msg", e.message))
 					}
 
 					return false

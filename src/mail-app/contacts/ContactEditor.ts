@@ -388,13 +388,10 @@ export class ContactEditor {
 				year: "2000",
 			})
 			return !date.isValid
-				? {
-						key: "invalidDateFormat_msg",
-						text: lang.get("invalidDateFormat_msg", {
-							"{1}": formatBirthdayNumeric(bday),
-						}),
-				  }
-				: { key: "empty", text: "" }
+				? lang.getResolved("invalidDateFormat_msg", {
+						"{1}": formatBirthdayNumeric(bday),
+				  })
+				: lang.getResolved("emptyString_msg")
 		}
 
 		const typeLabels: Array<[ContactCustomDateType, TranslationKey]> = typedEntries(ContactCustomDateTypeToLabel)
@@ -604,7 +601,7 @@ export class ContactEditor {
 		return m(ContactAggregateEditor, {
 			value: pronouns.pronouns,
 			fieldType: TextFieldType.Text,
-			label: { key: "lang", text: pronouns.language },
+			label: lang.makeResolved("lang", pronouns.language),
 			helpLabel: "emptyString_msg",
 			autocapitalizeTextField: Autocapitalize.none,
 			cancelAction: () => {
@@ -874,7 +871,7 @@ export class ContactEditor {
 	private createDialog(): Dialog {
 		const headerBarAttrs: DialogHeaderBarAttrs = {
 			left: [this.createCloseButtonAttrs()],
-			middle: { key: "name", text: this.contact.firstName + " " + this.contact.lastName },
+			middle: lang.makeResolved("name", this.contact.firstName + " " + this.contact.lastName),
 			right: [
 				{
 					label: "save_action",

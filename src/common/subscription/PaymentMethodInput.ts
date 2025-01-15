@@ -237,7 +237,7 @@ class PaypalInput {
 					},
 				},
 				m(BaseButton, {
-					label: { key: "PayPal", text: "PayPal" },
+					label: lang.makeResolved("PayPal", "PayPal"),
 					icon: m(".payment-logo.flex", m.trust(PayPalLogo)),
 					class: "border border-radius bg-white button-height plr",
 					onclick: () => {

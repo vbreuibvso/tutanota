@@ -911,7 +911,7 @@ class CalendarLocator {
 		if (isApp() || isDesktop()) {
 			calendarModel.syncExternalCalendars().catch(async (e) => {
 				showSnackBar({
-					message: { key: "exception_msg", text: e.message },
+					message: lang.makeResolved("exception_msg", e.message),
 					button: {
 						label: "ok_action",
 						click: noOp,

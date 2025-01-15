@@ -67,10 +67,9 @@ export function showAddAliasDialog(model: MailAddressTableModel, isNewPaidPlan: 
 								if (!domain.isPaid || isNewPaidPlan) {
 									formDomain = domain
 								} else {
-									Dialog.confirm({
-										key: "confirm_msg",
-										text: `${lang.get("paidEmailDomainLegacy_msg")}\n${lang.get("changePaidPlan_msg")}`,
-									}).then(async (confirmed) => {
+									Dialog.confirm(
+										lang.makeResolved("confirm_msg", `${lang.get("paidEmailDomainLegacy_msg")}\n${lang.get("changePaidPlan_msg")}`),
+									).then(async (confirmed) => {
 										if (confirmed) {
 											isNewPaidPlan = await showPlanUpgradeRequiredDialog(NewPaidPlans)
 										}
@@ -113,7 +112,7 @@ async function addAlias(model: MailAddressTableModel, alias: string, senderName:
 				errorMsg = lang.get("addAliasUserDisabled_msg")
 			}
 
-			return Dialog.message({ key: "confirm_msg", text: errorMsg })
+			return Dialog.message(lang.makeResolved("confirm_msg", errorMsg))
 		} else if (error instanceof UpgradeRequiredError) {
 			showPlanUpgradeRequiredDialog(error.plans, error.message)
 		} else {
