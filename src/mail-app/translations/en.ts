@@ -1898,15 +1898,16 @@ export default {
 		"october_label": "October",
 		"november_label": "November",
 		"december_label": "December",
-		"firstOf_label": "First {day} of {period}",
-		"lastOf_label": "Last {day} of {period}",
-		"nthOf_label": "on {day} of {period}",
+		"firstOfPeriod_label": "First {day} of the {period}",
+		"lastOfPeriod_label": "Last {day} of the {period}",
+		"onNDayOfPeriod_label": "on {day} of {period}",
 		"theYear_label": "the Year",
 		"theMonth_label": "the Month",
 		"inMonths_label": "in {months}",
 		"onDays_label": "on {days}",
-		"inWeek_label": "in {weeks}",
-		"occurrenceWithinSet_label": "on the {occurrences} occurrences in the set",
-		"and_label": "and"
+		"inWeek_label": "in weeks {weeks}",
+		"afterStartOfPeriod_label": "{days} occurrence after start of the {period}",
+		"and_label": "and",
+		"beforeEndOfPeriod_label": "{days} occurrence before end of the {period}"
 	}
 }

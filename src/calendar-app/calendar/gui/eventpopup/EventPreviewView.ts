@@ -237,7 +237,7 @@ export function formatRepetitionFrequency(repeatRule: RepeatRule): string | null
 
 		if (frequency) {
 			const freq = frequency.name
-			const readable = buildReadableAdvancedRepetitionRule(repeatRule.advancedRules)
+			const readable = buildReadableAdvancedRepetitionRule(repeatRule.advancedRules, downcast(repeatRule.frequency))
 
 			return (freq + " " + readable).trim()
 		}
@@ -248,20 +248,36 @@ export function formatRepetitionFrequency(repeatRule: RepeatRule): string | null
 				"{timeUnit}": getFrequencyTimeUnit(downcast(repeatRule.frequency)),
 			}) +
 			" " +
-			buildReadableAdvancedRepetitionRule(repeatRule.advancedRules)
+			buildReadableAdvancedRepetitionRule(repeatRule.advancedRules, downcast(repeatRule.frequency))
 		).trim()
 	}
 
 	return null
 }
 
-function buildReadableAdvancedRepetitionRule(advancedRule: AdvancedRepeatRule[]): string {
+function buildReadableAdvancedRepetitionRule(advancedRule: AdvancedRepeatRule[], frequency: RepeatPeriod): string {
 	const months: string[] = []
 	const days: string[] = []
 	const monthDays: string[] = []
 	const yearDays: string[] = []
 	const weekNumber: string[] = []
 	const setPos: string[] = []
+	let period = ""
+
+	switch (frequency) {
+		case RepeatPeriod.DAILY:
+			period = lang.get("day_label")
+			break
+		case RepeatPeriod.MONTHLY:
+			period = lang.get("month_label")
+			break
+		case RepeatPeriod.WEEKLY:
+			period = lang.get("week_label")
+			break
+		case RepeatPeriod.ANNUALLY:
+			period = lang.get("year_label")
+			break
+	}
 
 	advancedRule.forEach((item) => {
 		switch (item.ruleType) {
@@ -302,9 +318,8 @@ function buildReadableAdvancedRepetitionRule(advancedRule: AdvancedRepeatRule[])
 
 	if (days.length > 0) {
 		if (monthDays.length > 0) {
-			console.log("Month Days: ", monthDays)
 			const partOne = lang
-				.get("nthOf_label", {
+				.get("onNDayOfPeriod_label", {
 					"{day}": joinWithAnd(monthDays, ", ", lang.get("and_label")),
 					"{period}": months.length > 0 ? lang.get("month_label") : "",
 				})
@@ -321,9 +336,9 @@ function buildReadableAdvancedRepetitionRule(advancedRule: AdvancedRepeatRule[])
 			descriptions.push(`${partOne} ${partTwo}`.trim())
 		} else if (yearDays.length > 0) {
 			const partOne = lang
-				.get("nthOf_label", {
+				.get("onNDayOfPeriod_label", {
 					"{day}": joinWithAnd(yearDays, ", ", lang.get("and_label")),
-					"{period}": months.length > 0 ? lang.get("year_label") : "",
+					"{period}": months.length === 0 ? lang.get("year_label") : lang.get("month_label"),
 				})
 				.trim()
 
@@ -350,7 +365,7 @@ function buildReadableAdvancedRepetitionRule(advancedRule: AdvancedRepeatRule[])
 	} else if (monthDays.length > 0) {
 		descriptions.push(
 			lang
-				.get("nthOf_label", {
+				.get("onNDayOfPeriod_label", {
 					"{day}": joinWithAnd(monthDays, ", ", lang.get("and_label")),
 					"{period}": months.length > 0 ? lang.get("month_label") : "",
 				})
@@ -359,7 +374,7 @@ function buildReadableAdvancedRepetitionRule(advancedRule: AdvancedRepeatRule[])
 	} else if (yearDays.length > 0) {
 		descriptions.push(
 			lang
-				.get("nthOf_label", {
+				.get("onNDayOfPeriod_label", {
 					"{day}": joinWithAnd(yearDays, ", ", lang.get("and_label")),
 					"{period}": months.length > 0 ? lang.get("year_label") : "",
 				})
@@ -372,10 +387,28 @@ function buildReadableAdvancedRepetitionRule(advancedRule: AdvancedRepeatRule[])
 	}
 
 	if (setPos.length > 0) {
-		descriptions.push(lang.get("occurrenceWithinSet_label", { "{occurrences}": joinWithAnd(setPos, ", ", lang.get("and_label")) }))
+		const negativeSetPos: string[] = []
+		const positiveSetPos: string[] = []
+
+		setPos.forEach((item) => {
+			const parsedDay = Number.parseInt(item)
+			if (parsedDay < 0) {
+				negativeSetPos.push(Math.abs(parsedDay).toString())
+			} else {
+				positiveSetPos.push(item)
+			}
+		})
+
+		if (positiveSetPos.length > 0) {
+			descriptions.push(lang.get("afterStartOfPeriod_label", { "{days}": joinWithAnd(positiveSetPos, ", ", lang.get("and_label")), "{period}": period }))
+		}
+
+		if (negativeSetPos.length > 0) {
+			descriptions.push(lang.get("beforeEndOfPeriod_label", { "{days}": joinWithAnd(negativeSetPos, ", ", lang.get("and_label")), "{period}": period }))
+		}
 	}
 
-	return descriptions.join(" ")
+	return descriptions.join(", ")
 }
 
 function joinWithAnd(items: any[], separator: string, lastSeparator: string) {
@@ -390,7 +423,7 @@ function joinWithAnd(items: any[], separator: string, lastSeparator: string) {
 }
 
 /**
- * @returns {string} The returned string includes a leading separator (", " or " ").
+ * @returns {string} The returned string includes a leading separator (", " or "").
  */
 export function formatRepetitionEnd(repeatRule: RepeatRule, isAllDay: boolean): string {
 	switch (repeatRule.endType) {
