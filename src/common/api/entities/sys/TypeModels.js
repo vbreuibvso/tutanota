@@ -339,14 +339,14 @@ export const typeModels = {
 				"refType": "GroupKeyRotationData",
 				"dependency": null
 			},
-			"adminPubKeyTagList": {
+			"adminPubKeyMacList": {
 				"final": false,
-				"name": "adminPubKeyTagList",
+				"name": "adminPubKeyMacList",
 				"id": 2483,
 				"since": 111,
 				"type": "AGGREGATION",
 				"cardinality": "Any",
-				"refType": "KeyAuthenticationData",
+				"refType": "KeyMac",
 				"dependency": null
 			},
 			"distribution": {
@@ -403,14 +403,14 @@ export const typeModels = {
 				"refType": "KeyPair",
 				"dependency": null
 			},
-			"distKeyTag": {
+			"distKeyMac": {
 				"final": false,
-				"name": "distKeyTag",
+				"name": "distKeyMac",
 				"id": 2532,
 				"since": 118,
 				"type": "AGGREGATION",
 				"cardinality": "One",
-				"refType": "KeyAuthenticationData",
+				"refType": "KeyMac",
 				"dependency": null
 			}
 		},
@@ -7527,8 +7527,8 @@ export const typeModels = {
 		"app": "sys",
 		"version": "118"
 	},
-	"KeyAuthenticationData": {
-		"name": "KeyAuthenticationData",
+	"KeyMac": {
+		"name": "KeyMac",
 		"since": 111,
 		"type": "AGGREGATED_TYPE",
 		"id": 2477,
@@ -7545,9 +7545,9 @@ export const typeModels = {
 				"cardinality": "One",
 				"encrypted": false
 			},
-			"mac": {
+			"tag": {
 				"final": false,
-				"name": "mac",
+				"name": "tag",
 				"id": 2481,
 				"since": 111,
 				"type": "Bytes",
@@ -7740,14 +7740,14 @@ export const typeModels = {
 				"refType": "KeyPair",
 				"dependency": null
 			},
-			"adminPubKeyTag": {
+			"adminPubKeyMac": {
 				"final": false,
-				"name": "adminPubKeyTag",
+				"name": "adminPubKeyMac",
 				"id": 2482,
 				"since": 111,
 				"type": "AGGREGATION",
 				"cardinality": "ZeroOrOne",
-				"refType": "KeyAuthenticationData",
+				"refType": "KeyMac",
 				"dependency": null
 			},
 			"distEncAdminGroupSymKey": {
@@ -7760,14 +7760,14 @@ export const typeModels = {
 				"refType": "PubEncKeyData",
 				"dependency": null
 			},
-			"distKeyTag": {
+			"distKeyMac": {
 				"final": false,
-				"name": "distKeyTag",
+				"name": "distKeyMac",
 				"id": 2523,
 				"since": 118,
 				"type": "AGGREGATION",
 				"cardinality": "ZeroOrOne",
-				"refType": "KeyAuthenticationData",
+				"refType": "KeyMac",
 				"dependency": null
 			}
 		},
@@ -10048,9 +10048,9 @@ export const typeModels = {
 				"cardinality": "One",
 				"encrypted": false
 			},
-			"pubKeyMacTag": {
+			"pubKeyMac": {
 				"final": false,
-				"name": "pubKeyMacTag",
+				"name": "pubKeyMac",
 				"id": 2537,
 				"since": 118,
 				"type": "Bytes",
@@ -10174,14 +10174,14 @@ export const typeModels = {
 			}
 		},
 		"associations": {
-			"symKeyTag": {
+			"symKeyMac": {
 				"final": false,
-				"name": "symKeyTag",
+				"name": "symKeyMac",
 				"id": 2547,
 				"since": 118,
 				"type": "AGGREGATION",
 				"cardinality": "ZeroOrOne",
-				"refType": "KeyAuthenticationData",
+				"refType": "KeyMac",
 				"dependency": null
 			}
 		},

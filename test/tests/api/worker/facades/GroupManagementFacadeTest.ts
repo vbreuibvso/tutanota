@@ -23,7 +23,7 @@ import {
 	GroupKeyTypeRef,
 	GroupMembershipTypeRef,
 	GroupTypeRef,
-	KeyAuthenticationDataTypeRef,
+	KeyMacTypeRef,
 	LocalAdminRemovalPostIn,
 	PubEncKeyDataTypeRef,
 	UserTypeRef,
@@ -100,10 +100,10 @@ o.spec("GroupManagementFacadeTest", function () {
 			recipientIdentifierType: PublicKeyIdentifierType.GROUP_ID,
 			recipientKeyVersion: adminGroupKeyVersion.toString(),
 			senderKeyVersion: groupKeyVersion.toString(),
-			symKeyTag: createTestEntity(KeyAuthenticationDataTypeRef, {
+			symKeyMac: createTestEntity(KeyMacTypeRef, {
 				taggedKeyVersion: "2",
 				taggingGroup: groupId,
-				mac: object<Uint8Array>(),
+				tag: object<Uint8Array>(),
 				taggingKeyVersion: "1",
 			}),
 		})
@@ -163,8 +163,8 @@ o.spec("GroupManagementFacadeTest", function () {
 				group.pubAdminGroupEncGKey = pubAdminGroupEncGKey
 
 				const taggingKeyVersion = "1"
-				pubAdminGroupEncGKey.symKeyTag = createTestEntity(KeyAuthenticationDataTypeRef, {
-					mac: object<Uint8Array>(),
+				pubAdminGroupEncGKey.symKeyMac = createTestEntity(KeyMacTypeRef, {
+					tag: object<Uint8Array>(),
 					taggingKeyVersion,
 					taggedKeyVersion: "2",
 					taggingGroup: adminGroupId,
@@ -181,7 +181,7 @@ o.spec("GroupManagementFacadeTest", function () {
 
 				when(keyLoaderFacade.loadFormerGroupKeyInstance(formerGroupKeyListId, Number(taggingKeyVersion))).thenResolve(formerGroupKeys)
 
-				when(cryptoWrapper.aesDecrypt(anything(), pubAdminGroupEncGKey.symKeyTag?.mac, true)).thenReturn(givenUserGroupKeyHash)
+				when(cryptoWrapper.aesDecrypt(anything(), pubAdminGroupEncGKey.symKeyMac?.tag, true)).thenReturn(givenUserGroupKeyHash)
 
 				when(
 					keyAuthenticationFacade.generateNewUserGroupKeyAuthenticationData(argThat((arg: VersionedKey) => arg.object === groupKeyBytes)),
@@ -217,8 +217,8 @@ o.spec("GroupManagementFacadeTest", function () {
 					group.formerGroupKeys = createTestEntity(GroupKeysRefTypeRef, { list: formerGroupKeyListId })
 
 					// Prepare V2
-					pubAdminGroupEncGKey.symKeyTag = createTestEntity(KeyAuthenticationDataTypeRef, {
-						mac: object<Uint8Array>(),
+					pubAdminGroupEncGKey.symKeyMac = createTestEntity(KeyMacTypeRef, {
+						tag: object<Uint8Array>(),
 						taggingKeyVersion: "1",
 						taggedKeyVersion: "2",
 						taggingGroup: adminGroupId,
@@ -228,8 +228,8 @@ o.spec("GroupManagementFacadeTest", function () {
 					// Prepare V1
 					const groupKeysV1 = createTestEntity(GroupKeyTypeRef, {
 						pubAdminGroupEncGKey: createTestEntity(PubEncKeyDataTypeRef, {
-							symKeyTag: createTestEntity(KeyAuthenticationDataTypeRef, {
-								mac: new Uint8Array([1, 1, 1]),
+							symKeyMac: createTestEntity(KeyMacTypeRef, {
+								tag: new Uint8Array([1, 1, 1]),
 								taggedKeyVersion: "1",
 								taggingKeyVersion: "0",
 							}),
@@ -357,7 +357,7 @@ o.spec("GroupManagementFacadeTest", function () {
 					groupKeysV0 = createTestEntity(GroupKeyTypeRef, {
 						adminGroupEncGKey: null,
 						pubAdminGroupEncGKey: createTestEntity(PubEncKeyDataTypeRef, {
-							symKeyTag: createTestEntity(KeyAuthenticationDataTypeRef, {
+							symKeyMac: createTestEntity(KeyMacTypeRef, {
 								taggedKeyVersion: "0",
 							}),
 						}),
@@ -376,8 +376,8 @@ o.spec("GroupManagementFacadeTest", function () {
 
 				group.pubAdminGroupEncGKey = pubAdminGroupEncGKey
 
-				pubAdminGroupEncGKey.symKeyTag = createTestEntity(KeyAuthenticationDataTypeRef, {
-					mac: new Uint8Array([4, 8, 7]),
+				pubAdminGroupEncGKey.symKeyMac = createTestEntity(KeyMacTypeRef, {
+					tag: new Uint8Array([4, 8, 7]),
 					taggingKeyVersion: "1",
 					taggedKeyVersion: "1",
 					taggingGroup: adminGroupId,
@@ -392,7 +392,7 @@ o.spec("GroupManagementFacadeTest", function () {
 				when(cryptoWrapper.decryptKey(anything(), formerGroupKeys.adminGroupEncGKey!)).thenReturn([3, 5, 7])
 
 				when(keyLoaderFacade.loadFormerGroupKeyInstance(formerGroupKeyListId, 1)).thenResolve(formerGroupKeys)
-				when(cryptoWrapper.aesDecrypt(anything(), pubAdminGroupEncGKey.symKeyTag?.mac, true)).thenReturn(givenUserGroupKeyHash)
+				when(cryptoWrapper.aesDecrypt(anything(), pubAdminGroupEncGKey.symKeyMac?.tag, true)).thenReturn(givenUserGroupKeyHash)
 				when(keyAuthenticationFacade.generateNewUserGroupKeyAuthenticationData(anything())).thenReturn(computedUserGroupKeyHash)
 
 				const error = await assertThrows(TutanotaError, async () => await groupManagementFacade.getCurrentGroupKeyViaAdminEncGKey(groupId))

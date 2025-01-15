@@ -42,7 +42,7 @@ export class KeyAuthenticationFacade {
 	 * @param userGroupId user group id of the user that will use this new admin public key
 	 * @param userGroupKey user group key of the user that will use this new admin public key
 	 */
-	public deriveAdminGroupAuthKeyForNewAdminPubKeyTag(userGroupId: Id, userGroupKey: VersionedKey) {
+	public deriveAdminGroupAuthKeyForNewAdminPubKeyMac(userGroupId: Id, userGroupKey: VersionedKey) {
 		return this.cryptoWrapper.deriveKeyWithHkdf({
 			salt: userGroupId,
 			key: userGroupKey.object,

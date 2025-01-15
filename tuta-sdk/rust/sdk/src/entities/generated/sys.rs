@@ -82,7 +82,7 @@ impl Entity for AdminGroupKeyRotationGetOut {
 pub struct AdminGroupKeyRotationPostIn {
 	pub _format: i64,
 	pub adminGroupKeyData: GroupKeyRotationData,
-	pub adminPubKeyTagList: Vec<KeyAuthenticationData>,
+	pub adminPubKeyMacList: Vec<KeyMac>,
 	pub distribution: Vec<AdminGroupKeyDistributionElement>,
 	pub userGroupKeyData: UserGroupKeyRotationData,
 }
@@ -101,7 +101,7 @@ impl Entity for AdminGroupKeyRotationPostIn {
 pub struct AdminGroupKeyRotationPutIn {
 	pub _format: i64,
 	pub adminDistKeyPair: KeyPair,
-	pub distKeyTag: KeyAuthenticationData,
+	pub distKeyMac: KeyMac,
 }
 
 impl Entity for AdminGroupKeyRotationPutIn {
@@ -2259,20 +2259,20 @@ impl Entity for InvoiceItem {
 
 #[derive(uniffi::Record, Clone, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "testing"), derive(PartialEq, Debug))]
-pub struct KeyAuthenticationData {
+pub struct KeyMac {
 	pub _id: Option<CustomId>,
 	#[serde(with = "serde_bytes")]
-	pub mac: Vec<u8>,
+	pub tag: Vec<u8>,
 	pub taggedKeyVersion: i64,
 	pub taggingKeyVersion: i64,
 	pub taggingGroup: GeneratedId,
 }
 
-impl Entity for KeyAuthenticationData {
+impl Entity for KeyMac {
 	fn type_ref() -> TypeRef {
 		TypeRef {
 			app: "sys",
-			type_: "KeyAuthenticationData",
+			type_: "KeyMac",
 		}
 	}
 }
@@ -2314,9 +2314,9 @@ pub struct KeyRotation {
 	pub groupKeyRotationType: i64,
 	pub targetKeyVersion: i64,
 	pub adminDistKeyPair: Option<KeyPair>,
-	pub adminPubKeyTag: Option<KeyAuthenticationData>,
+	pub adminPubKeyMac: Option<KeyMac>,
 	pub distEncAdminGroupSymKey: Option<PubEncKeyData>,
-	pub distKeyTag: Option<KeyAuthenticationData>,
+	pub distKeyMac: Option<KeyMac>,
 }
 
 impl Entity for KeyRotation {
@@ -3066,7 +3066,7 @@ pub struct PubDistributionKey {
 	#[serde(with = "serde_bytes")]
 	pub pubEccKey: Vec<u8>,
 	#[serde(with = "serde_bytes")]
-	pub pubKeyMacTag: Vec<u8>,
+	pub pubKeyMac: Vec<u8>,
 	#[serde(with = "serde_bytes")]
 	pub pubKyberKey: Vec<u8>,
 	pub userGroupId: GeneratedId,
@@ -3094,7 +3094,7 @@ pub struct PubEncKeyData {
 	pub senderIdentifier: Option<String>,
 	pub senderIdentifierType: Option<i64>,
 	pub senderKeyVersion: Option<i64>,
-	pub symKeyTag: Option<KeyAuthenticationData>,
+	pub symKeyMac: Option<KeyMac>,
 }
 
 impl Entity for PubEncKeyData {

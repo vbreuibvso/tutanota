@@ -77,7 +77,7 @@ export type AdminGroupKeyRotationPostIn = {
 	_format: NumberString;
 
 	adminGroupKeyData: GroupKeyRotationData;
-	adminPubKeyTagList: KeyAuthenticationData[];
+	adminPubKeyMacList: KeyMac[];
 	distribution: AdminGroupKeyDistributionElement[];
 	userGroupKeyData: UserGroupKeyRotationData;
 }
@@ -93,7 +93,7 @@ export type AdminGroupKeyRotationPutIn = {
 	_format: NumberString;
 
 	adminDistKeyPair: KeyPair;
-	distKeyTag: KeyAuthenticationData;
+	distKeyMac: KeyMac;
 }
 export const AdministratedGroupTypeRef: TypeRef<AdministratedGroup> = new TypeRef("sys", "AdministratedGroup")
 
@@ -1815,17 +1815,17 @@ export type InvoiceItem = {
 	totalPrice: NumberString;
 	type: NumberString;
 }
-export const KeyAuthenticationDataTypeRef: TypeRef<KeyAuthenticationData> = new TypeRef("sys", "KeyAuthenticationData")
+export const KeyMacTypeRef: TypeRef<KeyMac> = new TypeRef("sys", "KeyMac")
 
-export function createKeyAuthenticationData(values: StrippedEntity<KeyAuthenticationData>): KeyAuthenticationData {
-	return Object.assign(create(typeModels.KeyAuthenticationData, KeyAuthenticationDataTypeRef), values)
+export function createKeyMac(values: StrippedEntity<KeyMac>): KeyMac {
+	return Object.assign(create(typeModels.KeyMac, KeyMacTypeRef), values)
 }
 
-export type KeyAuthenticationData = {
-	_type: TypeRef<KeyAuthenticationData>;
+export type KeyMac = {
+	_type: TypeRef<KeyMac>;
 
 	_id: Id;
-	mac: Uint8Array;
+	tag: Uint8Array;
 	taggedKeyVersion: NumberString;
 	taggingKeyVersion: NumberString;
 
@@ -1865,9 +1865,9 @@ export type KeyRotation = {
 	targetKeyVersion: NumberString;
 
 	adminDistKeyPair: null | KeyPair;
-	adminPubKeyTag: null | KeyAuthenticationData;
+	adminPubKeyMac: null | KeyMac;
 	distEncAdminGroupSymKey: null | PubEncKeyData;
-	distKeyTag: null | KeyAuthenticationData;
+	distKeyMac: null | KeyMac;
 }
 export const KeyRotationsRefTypeRef: TypeRef<KeyRotationsRef> = new TypeRef("sys", "KeyRotationsRef")
 
@@ -2473,7 +2473,7 @@ export type PubDistributionKey = {
 
 	_id: Id;
 	pubEccKey: Uint8Array;
-	pubKeyMacTag: Uint8Array;
+	pubKeyMac: Uint8Array;
 	pubKyberKey: Uint8Array;
 
 	userGroupId: Id;
@@ -2497,7 +2497,7 @@ export type PubEncKeyData = {
 	senderIdentifierType: null | NumberString;
 	senderKeyVersion: null | NumberString;
 
-	symKeyTag: null | KeyAuthenticationData;
+	symKeyMac: null | KeyMac;
 }
 export const PublicKeyGetInTypeRef: TypeRef<PublicKeyGetIn> = new TypeRef("sys", "PublicKeyGetIn")
 
