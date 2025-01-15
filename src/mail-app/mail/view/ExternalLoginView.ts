@@ -226,7 +226,7 @@ export class ExternalLoginView extends BaseTopLevelView implements TopLevelView<
 			return [
 				m(".flex.col.content-bg.border-radius-big.plr-2l.mt", [
 					this.viewModel.showAutoLoginButton ? this.renderAutoLoginButton() : this.renderForm(),
-					m("p.center.statusTextColor.mt-xs.mb-s", m("small", lang.getMaybeLazy(this.viewModel.helpText))),
+					m("p.center.statusTextColor.mt-xs.mb-s", m("small", lang.getMaybeLazy(this.viewModel.helpText), [])),
 				]),
 				m(".flex-grow"),
 				renderInfoLinks(),

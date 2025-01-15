@@ -5,9 +5,14 @@ import { assertMainOrNodeBoot } from "../api/common/Env"
 
 export type TranslationKey = TranslationKeyType
 export type TranslationText = TranslationKey | ResolvedTranslation
+
 export type ResolvedTranslation = {
 	tkey: TranslationKey | string
 	text: string
+
+	// defined to make it clash with Component. This ensures that typscript errors out when we pass a resolved translation
+	// to the m hyperscript function like m('div', ResolvedTranslation{tkey: "dummy", text: "yeah"})
+	oninit?: Function
 }
 assertMainOrNodeBoot()
 export type DateTimeFormatOptions = {
@@ -532,7 +537,7 @@ export class LanguageViewModel {
 			return tkey
 		} else {
 			let text = lang.get(tkey)
-			return { tkey, text }
+			return this.makeResolved(tkey, text)
 		}
 	}
 
@@ -549,8 +554,8 @@ export class LanguageViewModel {
 		return { tkey, text }
 	}
 
-	getResolved(id: TranslationKey, replacements?: Record<string, string | number>) {
-		return { tkey: id, text: this.get(id, replacements) }
+	getResolved(id: TranslationKey, replacements?: Record<string, string | number>): ResolvedTranslation {
+		return this.makeResolved(id, this.get(id, replacements))
 	}
 }
 
