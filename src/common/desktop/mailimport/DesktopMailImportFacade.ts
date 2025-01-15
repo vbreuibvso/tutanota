@@ -1,11 +1,14 @@
-import { AsyncMailImportError, ImporterApi, PreparationError, TutaCredentials } from "../../../../packages/node-mimimi/dist/binding.cjs"
+import { AsyncMailImportError, ImporterApi, ImportErrorKind, PreparationError, TutaCredentials } from "../../../../packages/node-mimimi/dist/binding.cjs"
 import { UnencryptedCredentials } from "../../native/common/generatedipc/UnencryptedCredentials.js"
 import { CredentialType } from "../../misc/credentials/CredentialType.js"
 import { NativeMailImportFacade } from "../../native/common/generatedipc/NativeMailImportFacade"
-import { defer, DeferredObject } from "@tutao/tutanota-utils"
+import { clear, defer, DeferredObject } from "@tutao/tutanota-utils"
 import { ElectronExports } from "../ElectronExportTypes.js"
 import { MailImportError } from "../../api/common/error/MailImportError.js"
 import { ProgrammingError } from "../../api/common/error/ProgrammingError.js"
+import { DesktopNotifier, NotificationResult } from "../DesktopNotifier.js"
+import { LanguageViewModel } from "../../misc/LanguageViewModel.js"
+import path from "node:path"
 
 type Listener = DeferredObject<AsyncMailImportError>["reject"]
 
@@ -13,11 +16,26 @@ export type ImportErrorData =
 	| { category: "LocalSdkError"; source: string }
 	| { category: "ServerCommunicationError"; source: string }
 	| { category: "InvalidImportFilesErrors"; source: string }
-	| { category: "InvalidEml"; source: string }
-	| { category: "" }
+	| { category: "ImportIncomplete"; source: string }
 
-function asyncImportErrorToMailImportError(error: AsyncMailImportError): ImportErrorData {
-	throw new ProgrammingError("not implemented yet!")
+function asyncImportErrorToMailImportErrorData(error: AsyncMailImportError): ImportErrorData {
+	const { kind } = error
+	switch (kind) {
+		case ImportErrorKind.FileDeletionError:
+			return { category: "InvalidImportFilesErrors", source: kind }
+
+		case ImportErrorKind.SdkError:
+		case ImportErrorKind.GenericSdkError:
+			return { category: "LocalSdkError", source: kind }
+
+		case ImportErrorKind.NoImportFeature:
+		case ImportErrorKind.EmptyBlobServerList:
+			return { category: "ServerCommunicationError", source: kind }
+
+		case ImportErrorKind.TooBigChunk:
+		case ImportErrorKind.ImportIncomplete:
+			return { category: "ImportIncomplete", source: kind }
+	}
 }
 
 function mimimiErrorToImportErrorData(error: { message: string }): ImportErrorData {
@@ -35,6 +53,7 @@ function mimimiErrorToImportErrorData(error: { message: string }): ImportErrorDa
 		case PreparationError.FileReadError:
 		case PreparationError.EmlFileWriteFailure:
 			return { category: "InvalidImportFilesErrors", source }
+
 		// errors due to problems communicating with the server (network, auth,...)
 		case PreparationError.CanNotLoginToSdk:
 		case PreparationError.LoginError:
@@ -42,13 +61,16 @@ function mimimiErrorToImportErrorData(error: { message: string }): ImportErrorDa
 		case PreparationError.CannotLoadRemoteState:
 		case PreparationError.NoImportFeature:
 			return { category: "ServerCommunicationError", source }
+
 		// errors that happen before we even talk to the server. usually not actionable.
 		case PreparationError.CannotCreateSdk:
 		case PreparationError.NoNativeRestClient:
 			return { category: "LocalSdkError", source }
+
 		// this one is very actionable, but we don't have associated data currently to show the user which file is bad.
 		case PreparationError.NotAValidEmailFile:
-			return { category: "InvalidEml", source }
+			return { category: "ImportIncomplete", source }
+
 		default:
 			// we'd like ts to check we considered all variants, but we can't do that without checking the type
 			// before passing it into this function. removing the default case would cause us to lose error
@@ -62,7 +84,7 @@ export class DesktopMailImportFacade implements NativeMailImportFacade {
 	private readonly importerApis: Map<string, ImporterApi> = new Map()
 	private readonly currentListeners: Map<string, Array<Listener>> = new Map()
 
-	constructor(electron: ElectronExports) {
+	constructor(private readonly electron: ElectronExports, private readonly notifier: DesktopNotifier, private readonly lang: LanguageViewModel) {
 		ImporterApi.initLog()
 		electron.app.on("before-quit", () => ImporterApi.deinitLog())
 		this.configDirectory = electron.app.getPath("userData")
@@ -148,12 +170,25 @@ export class DesktopMailImportFacade implements NativeMailImportFacade {
 	}
 
 	private processMimimiMessage(mailboxId: string, error: AsyncMailImportError) {
+		this.notifier
+			.showOneShot({
+				// fixme: translate
+				title: "import incomplete",
+				body: "import could not complete: there were invalid files. click to reveal them.",
+			})
+			.then((res) => {
+				if (res === NotificationResult.Click) {
+					this.electron.shell.showItemInFolder(path.join(this.configDirectory, "current_imports", mailboxId, "dummy.eml"))
+				}
+			})
+
 		let listeners = this.currentListeners.get(mailboxId)
 		if (listeners != null) {
 			for (const listener of listeners) {
-				const mailImportError = new MailImportError(asyncImportErrorToMailImportError(error))
+				const mailImportError = new MailImportError(asyncImportErrorToMailImportErrorData(error))
 				listener(mailImportError)
 			}
+			clear(listeners)
 		}
 	}
 

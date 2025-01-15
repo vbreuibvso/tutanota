@@ -13,8 +13,9 @@ import { EstimatingProgressMonitor } from "../../../common/api/common/utils/Esti
 import { ProgrammingError } from "../../../common/api/common/error/ProgrammingError.js"
 import { EntityUpdateData, isUpdateForTypeRef } from "../../../common/api/common/utils/EntityUpdateUtils"
 import { EventController } from "../../../common/api/main/EventController"
-import { Dialog } from "../../../common/gui/base/Dialog.js"
 import { MailImportError } from "../../../common/api/common/error/MailImportError.js"
+import { showSnackBar, SnackBarButtonAttrs } from "../../../common/gui/base/SnackBar.js"
+import { OpenSettingsHandler } from "../../../common/native/main/OpenSettingsHandler.js"
 
 // keep in sync with napi binding.d.cts
 export const enum ImportProgressAction {
@@ -41,6 +42,7 @@ export class MailImporter {
 		eventController: EventController,
 		private readonly credentialsProvider: CredentialsProvider,
 		private readonly nativeMailImportFacade: NativeMailImportFacade,
+		private readonly openSettingsHandler: OpenSettingsHandler,
 	) {
 		this.uiStatus = UiImportStatus.Idle
 		eventController.addEntityListener((updates) => this.entityEventsReceived(updates))
@@ -63,7 +65,7 @@ export class MailImporter {
 				this.activeImportId = await importFacade.getResumableImport(mailbox._id, mailOwnerGroupId, unencryptedCredentials, apiUrl)
 			} catch (e) {
 				if (e instanceof MailImportError) {
-					console.error("some error", e.data)
+					this.handleError(e).catch()
 				} else {
 					throw e
 				}
@@ -122,7 +124,7 @@ export class MailImporter {
 				await importFacade.setAsyncErrorHook(mailboxId)
 			} catch (e) {
 				if (e instanceof MailImportError) {
-					this.handleError(e)
+					this.handleError(e).catch()
 					continue
 				}
 				throw e
@@ -131,9 +133,12 @@ export class MailImporter {
 		}
 	}
 
-	private handleError(msg: MailImportError) {
-		// todo!
-		Dialog.message(() => msg.message)
+	private async handleError(msg: MailImportError) {
+		const button: SnackBarButtonAttrs = {
+			label: () => "Show Imports",
+			click: () => this.openSettingsHandler.openSettings("mailImport"),
+		}
+		showSnackBar({ message: () => "failed import", button })
 	}
 
 	/**
@@ -167,7 +172,7 @@ export class MailImporter {
 			this.activeImportId = await importFacade.prepareNewImport(mailboxId, mailOwnerGroupId, targetFolder._id, filePaths, unencryptedCredentials, apiUrl)
 		} catch (e) {
 			if (e instanceof MailImportError) {
-				console.error("some error", e.data)
+				this.handleError(e).catch()
 			} else {
 				throw e
 			}

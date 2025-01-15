@@ -261,7 +261,7 @@ async function createComponents(): Promise<Components> {
 	}
 	const pushFacade = new DesktopNativePushFacade(sse, desktopAlarmScheduler, alarmStorage, sseStorage)
 	const settingsFacade = new DesktopSettingsFacade(conf, desktopUtils, integrator, updater, lang)
-	const desktopImportFacade = new DesktopMailImportFacade(electron)
+	const desktopImportFacade = new DesktopMailImportFacade(electron, notifier, lang)
 
 	const dispatcherFactory = (window: ApplicationWindow) => {
 		// @ts-ignore

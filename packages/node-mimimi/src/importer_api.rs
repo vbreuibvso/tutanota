@@ -28,8 +28,9 @@ pub struct TutaCredentials {
 pub struct ImporterApi {
 	importer: Arc<Importer>,
 	importer_loop_handle: Option<napi::tokio::task::JoinHandle<()>>,
-	on_error_callback:
-		Option<ThreadsafeFunction<AsyncMailImportError, napi::threadsafe_function::ErrorStrategy::Fatal>>,
+	on_error_callback: Option<
+		ThreadsafeFunction<AsyncMailImportError, napi::threadsafe_function::ErrorStrategy::Fatal>,
+	>,
 }
 
 /// Implements the interface between the javascript and the rust code of the importer.
@@ -43,7 +44,6 @@ impl ImporterApi {
 		target_owner_group: String,
 		tuta_credentials: TutaCredentials,
 	) -> napi::Result<Option<ImporterApi>> {
-		Err(PreparationError::CanNotLoginToSdk)?;
 		let target_owner_group = GeneratedId(target_owner_group);
 		let import_directory = FileImport::make_import_directory(&config_directory, &mailbox_id);
 		let existing_import = Importer::get_existing_import_id(&import_directory)?;
@@ -159,7 +159,10 @@ impl ImporterApi {
 	#[napi]
 	pub unsafe fn set_error_hook(
 		&mut self,
-		hook: ThreadsafeFunction<AsyncMailImportError, napi::threadsafe_function::ErrorStrategy::Fatal>,
+		hook: ThreadsafeFunction<
+			AsyncMailImportError,
+			napi::threadsafe_function::ErrorStrategy::Fatal,
+		>,
 	) -> napi::Result<()> {
 		self.on_error_callback = Some(hook);
 		Ok(())

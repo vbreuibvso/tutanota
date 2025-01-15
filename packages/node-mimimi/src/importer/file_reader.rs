@@ -1,34 +1,34 @@
-use crate::importer::errors::{FileIterationError, PreparationError};
+use crate::importer::errors::{
+	AsyncMailImportError, FileIterationError, IterationError, PreparationError,
+};
 use crate::importer::importable_mail::ImportableMail;
-use crate::importer::STATE_ID_FILE_NAME;
+use crate::importer::{FAILED_EML_EXTENSION, STATE_ID_FILE_NAME};
 use mail_parser::mailbox::mbox::MessageIterator;
 use mail_parser::MessageParser;
 use std::fs;
 use std::io::BufReader;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub struct FileImport {
-	eml_sources: Vec<PathBuf>,
+	queued_eml_paths: Vec<PathBuf>,
 	message_parser: MessageParser,
 }
 
-struct SourceEml {
-	file_content: Vec<u8>,
-	eml_file_path: PathBuf,
-}
-
 impl FileImport {
-	fn next_eml_contents(&mut self) -> Result<SourceEml, FileIterationError> {
-		let eml_file_path = self
-			.eml_sources
-			.pop()
-			.ok_or(FileIterationError::SourceEnd)?;
-		let file_content = fs::read(&eml_file_path)
-			.map_err(|_read_err| FileIterationError::FileReadError(eml_file_path.clone()))?;
-		Ok(SourceEml {
-			file_content,
-			eml_file_path,
-		})
+	fn next_importable_mail(&mut self) -> Result<Option<ImportableMail>, FileIterationError> {
+		let Some(eml_path) = self.queued_eml_paths.pop() else {
+			return Ok(None);
+		};
+
+		let eml_content = fs::read(&eml_path)
+			.map_err(|_read_err| FileIterationError::FileReadError(eml_path.clone()))?;
+		let parsed_mail = self
+			.message_parser
+			.parse(eml_content.as_slice())
+			.ok_or(FileIterationError::ParseError(eml_path.clone()))?;
+
+		let importable_mail = ImportableMail::convert_from(&parsed_mail, Some(eml_path));
+		Ok(Some(importable_mail))
 	}
 }
 
@@ -36,9 +36,22 @@ impl FileImport {
 	pub fn new(eml_sources: Vec<PathBuf>) -> Self {
 		let message_parser = MessageParser::default();
 		Self {
-			eml_sources,
+			queued_eml_paths: eml_sources,
 			message_parser,
 		}
+	}
+
+	/// see if there are any failed mails in FileImport and if so,
+	/// mark them as failed emls,
+	/// marking is done my changing the file extension. so that next time we start an
+	/// import we don't pick it up again ( we will pick up files with extension .eml )
+	/// and also we don't have to delete them so user can always refer to the import dir
+	/// and see what emails failed
+	pub(crate) fn rename_failed_eml_file(failed_eml_path: &Path) -> std::io::Result<()> {
+		let mut migrated_path = failed_eml_path.to_path_buf();
+		migrated_path.set_extension(FAILED_EML_EXTENSION);
+
+		fs::rename(&failed_eml_path, &migrated_path)
 	}
 
 	/// Convert mbox files to eml and copy all eml files to target_folder.
@@ -112,17 +125,24 @@ impl FileImport {
 		Ok(import_directory_path)
 	}
 
-	pub fn get_next_importable_mail(&mut self) -> Result<ImportableMail, FileIterationError> {
-		// Get next item from eml source first. once all eml sources are exhausted,
-		// move to next mbox sources,
-		let eml = self.next_eml_contents()?;
-
-		self.message_parser
-			.parse(eml.file_content.as_slice())
-			.map(|parsed_message| {
-				ImportableMail::convert_from(&parsed_message, Some(eml.eml_file_path.clone()))
-			})
-			.ok_or(FileIterationError::ParseError(eml.eml_file_path))
+	pub fn get_next_importable_mail(&mut self) -> Option<ImportableMail> {
+		// try to get next mail from sources,
+		// if it fails put the error in list ( which also contains the path itself )
+		// and try to get next one again until we run out of all sources
+		loop {
+			match self.next_importable_mail() {
+				Ok(maybe_importable_mail) => return maybe_importable_mail,
+				Err(FileIterationError::FileReadError(_)) => {
+					// we don't have to do anything here,
+					// if user restarts the app, this file will be picked up again and retried
+					// if use do not restart app, they will have option to open the import directory,
+					// they can see for themselves
+				},
+				Err(FileIterationError::ParseError(malformed_file)) => {
+					Self::rename_failed_eml_file(&malformed_file).ok();
+				},
+			}
+		}
 	}
 
 	/// recursively deletes the given directory and its contents
@@ -135,10 +155,11 @@ impl FileImport {
 
 	/// makes a best-effort attempt to make the state in the given target directory
 	/// look like there is no ongoing import anymore, but will ignore errors.
-	pub fn clean_import_directory(import_dir: &PathBuf) {
+	/// if there were malformed files, they will remain behind to be inspected until a new import starts.
+	pub fn delete_state_file(import_dir: &PathBuf) {
 		fs::remove_file(import_dir.join(STATE_ID_FILE_NAME)).ok();
-		FileImport::delete_dir_if_exists(import_dir).ok();
 	}
+
 	pub fn make_import_directory(config_directory: &str, mailbox_id: &str) -> PathBuf {
 		[
 			config_directory.to_string(),

@@ -1,5 +1,5 @@
 use crate::importer::importable_mail::MailParseError;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tutasdk::ApiCallError;
 
 #[napi_derive::napi(string_enum)]
@@ -10,12 +10,14 @@ pub enum ImportErrorKind {
 	NoImportFeature,
 	/// Blob responded with empty server url list
 	EmptyBlobServerList,
-	/// Error while iterating through import source
-	IterationError,
 	/// Some mail was too big
 	TooBigChunk,
 	/// Error that occured when deleting a file
 	FileDeletionError,
+	/// The import was finished, but some files
+	/// were left behind and marked as failures.
+	/// the path is the directory where the failures can be inspected
+	ImportIncomplete,
 	/// Generic counterpart for SdkError
 	// note: do not throw this manually
 	GenericSdkError,
@@ -97,8 +99,6 @@ pub enum ImapIterationError {
 /// Error that can occur when we iterate through import directory
 #[derive(Debug)]
 pub enum FileIterationError {
-	/// We have read all contents. not actually an error, but the signal that we finished
-	SourceEnd,
 	/// File read error
 	FileReadError(PathBuf),
 	/// failed to parse an eml.

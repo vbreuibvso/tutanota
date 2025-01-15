@@ -839,6 +839,7 @@ class MailLocator {
 						this.eventController,
 						this.credentialsProvider,
 						desktopInterfaces.nativeMailImportFacade,
+						openSettingsHandler,
 					)
 				}
 			} else if (isAndroidApp() || isIOSApp()) {

@@ -1,7 +1,7 @@
 use crate::importer::importable_mail::{
 	ImportableMailAttachment, ImportableMailAttachmentMetaData, KeyedImportableMailAttachment,
 };
-use crate::reduce_to_chunks::{AttachmentUploadData, KeyedImportMailData};
+use crate::reduce_to_chunks::{AttachmentUploadData, ChunkedImportItem, KeyedImportMailData};
 use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use base64::Engine;
 use file_reader::FileImport;
@@ -49,6 +49,7 @@ pub const MAX_REQUEST_SIZE: usize = 1024 * 1024 * 8;
 pub const MAX_REQUEST_SIZE: usize = 1024 * 5;
 
 pub(super) const STATE_ID_FILE_NAME: &str = "import_mail_state";
+pub(super) const FAILED_EML_EXTENSION: &str = "failed";
 
 // We need this type because IdTupleGenerated cannot be converted to a napi value.
 #[cfg_attr(feature = "javascript", napi_derive::napi(object))]
@@ -130,7 +131,6 @@ pub struct ImportEssential {
 }
 
 pub enum ImportSource {
-	RemoteImap { imap_import_client: Box<ImapImport> },
 	LocalFile { fs_email_client: FileImport },
 }
 
@@ -138,27 +138,9 @@ impl Iterator for ImportSource {
 	type Item = ImportableMail;
 
 	fn next(&mut self) -> Option<Self::Item> {
-		let next_importable_mail = match self {
-			// the other way (converting fs_source to an async_iterator) would be nicer, but that's a nightly feature
-			ImportSource::RemoteImap { imap_import_client } => imap_import_client
-				.fetch_next_mail()
-				.map_err(IterationError::Imap),
-			ImportSource::LocalFile { fs_email_client } => fs_email_client
-				.get_next_importable_mail()
-				.map_err(IterationError::File),
-		};
-
-		match next_importable_mail {
-			Ok(next_importable_mail) => Some(next_importable_mail),
-
-			// source says, all the iteration have ended,
-			Err(IterationError::File(FileIterationError::SourceEnd))
-			| Err(IterationError::Imap(ImapIterationError::SourceEnd)) => None,
-
-			Err(e) => {
-				// once we handle this case we will need another iterator that filters (and logs) the
-				// errors so we don't have to handle the error case during the chunking + upload
-				panic!("Cannot get next email from source: {e:?}")
+		match self {
+			ImportSource::LocalFile { fs_email_client } => {
+				fs_email_client.get_next_importable_mail()
 			},
 		}
 	}
@@ -502,6 +484,29 @@ impl Importer {
 			.collect())
 	}
 
+	/// check the given directory for any failed mail files that have been left behind during iteration
+	pub(crate) fn assert_no_failures(import_directory: &Path) -> Result<(), AsyncMailImportError> {
+		let err = AsyncMailImportError::with_path(
+			ImportErrorKind::ImportIncomplete,
+			import_directory.to_path_buf(),
+		);
+
+		let Ok(read_dir) = fs::read_dir(&import_directory) else {
+			return Err(err);
+		};
+
+		let Ok(entries) = read_dir.collect::<std::io::Result<Vec<DirEntry>>>() else {
+			return Err(err);
+		};
+
+		entries
+			.iter()
+			.map(DirEntry::path)
+			.find(|path| path.extension() == Some(OsStr::new(FAILED_EML_EXTENSION)))
+			.map(|_| ())
+			.ok_or(err)
+	}
+
 	pub(super) async fn resume_file_importer(
 		mailbox_id: &str,
 		config_directory: String,
@@ -621,10 +626,12 @@ impl Importer {
 		Ok(importer)
 	}
 
-	/// return `Ok(true)` if all mails are finished
-	/// 	   `Ok(false)` if we had no errors and can continue
+	/// return `Ok(None)` if all mails are finished. we can remove the remote state id. the folder will be left with
+	///         the unparseable/unreadable mails.
+	/// 	   `Ok(Some(..))` if we need to do another loop. the returned vector contains the file paths that were
+	///        successfully uploaded.
 	///        `Err()` if something went wrong. we might still continue depending on the error.
-	pub async fn import_next_chunk(&self) -> Result<bool, AsyncMailImportError> {
+	pub async fn import_next_chunk(&self) -> Result<Option<Vec<PathBuf>>, AsyncMailImportError> {
 		let import_essentials = &self.essentials;
 		let Self {
 			chunked_import_source,
@@ -634,7 +641,7 @@ impl Importer {
 		let next_chunk_to_import = chunked_import_source.lock().await.next();
 		match next_chunk_to_import {
 			// everything have been finished
-			None => Ok(true),
+			None => Ok(None),
 
 			// this chunk was too big to import
 			Some(Err(_too_big_chunk)) => {
@@ -653,9 +660,9 @@ impl Importer {
 					.try_into()
 					.expect("item count in single chunk will never exceed i64::max");
 
-				let eml_file_paths: Vec<Option<PathBuf>> = chunked_import_data
+				let eml_file_paths: Vec<PathBuf> = chunked_import_data
 					.iter()
-					.map(|id| id.keyed_import_mail_data.eml_file_path.clone())
+					.filter_map(|id| id.keyed_import_mail_data.eml_file_path.clone())
 					.collect();
 
 				let mut failed_count: i64 = 0;
@@ -679,16 +686,7 @@ impl Importer {
 						state.successfulMails += import_count_in_this_chunk;
 					})
 					.await?;
-				for eml_file_path in eml_file_paths.into_iter().flatten() {
-					fs::remove_file(&eml_file_path).map_err(|e| {
-						AsyncMailImportError::with_path(
-							ImportErrorKind::FileDeletionError,
-							eml_file_path,
-						)
-					})?;
-				}
-
-				Ok(false)
+				Ok(Some(eml_file_paths))
 			},
 		}
 	}
@@ -731,13 +729,26 @@ impl Importer {
 					let import_chunk_res = self.import_next_chunk().await;
 
 					match import_chunk_res {
-						Ok(true) => {
-							FileImport::clean_import_directory(&self.essentials.import_directory);
+						Ok(None) => {
+							// deleting the state file is enough to mark there is no import running,
+							// do not delete the whole directory because we will leave some un-importable file
+							// in the directory. and users should be able to inspect those
+							FileImport::delete_state_file(&self.essentials.import_directory);
 							self.set_remote_import_status(ImportStatus::Finished)
 								.await?;
+							Importer::assert_no_failures(&self.essentials.import_directory)?;
 							break;
 						},
-						Ok(false) => {},
+						Ok(Some(completed_paths)) => {
+							for eml_file_path in completed_paths.into_iter() {
+								fs::remove_file(&eml_file_path).map_err(|_e| {
+									AsyncMailImportError::with_path(
+										ImportErrorKind::FileDeletionError,
+										eml_file_path,
+									)
+								})?;
+							}
+						},
 
 						Err(e) => {
 							self.handle_err_while_importing_chunk(e)?;
@@ -765,13 +776,6 @@ impl Importer {
 			| ImportErrorKind::GenericSdkError
 			| ImportErrorKind::SdkError => Err(ImportErrorKind::GenericSdkError)?,
 
-			ImportErrorKind::IterationError => {
-				// probably we can just continue to iterate through the source,
-				// downside: we might lose this item and when we finish we empty the dir,
-				// do this item just got lost in void
-				Ok(())
-			},
-
 			ImportErrorKind::TooBigChunk => {
 				// likely caused by a single mail that's too big for a single chunk.
 				// we can continue and this mail will be added to failed mails count.
@@ -784,6 +788,7 @@ impl Importer {
 				// worst case: use pause/resume ( or quit the app and open again ) and the imported chunk will be imported again
 				Ok(())
 			},
+			ImportErrorKind::ImportIncomplete => Err(ImportErrorKind::ImportIncomplete.into()),
 		}
 	}
 
