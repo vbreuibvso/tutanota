@@ -112,8 +112,6 @@ impl FileImport {
 		Ok(import_directory_path)
 	}
 
-	/// Get next importable mail form sources,
-	/// will try to exhaust eml_sources first
 	pub fn get_next_importable_mail(&mut self) -> Result<ImportableMail, FileIterationError> {
 		// Get next item from eml source first. once all eml sources are exhausted,
 		// move to next mbox sources,

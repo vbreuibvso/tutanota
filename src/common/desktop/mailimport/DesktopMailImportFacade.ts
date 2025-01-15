@@ -16,7 +16,9 @@ export type ImportErrorData =
 	| { category: "InvalidEml"; source: string }
 	| { category: "" }
 
-function asyncImportErrorToMailImportError(error: { message: string }): ImportErrorData {}
+function asyncImportErrorToMailImportError(error: AsyncMailImportError): ImportErrorData {
+	throw new ProgrammingError("not implemented yet!")
+}
 
 function mimimiErrorToImportErrorData(error: { message: string }): ImportErrorData {
 	const { message: source } = error
@@ -149,7 +151,7 @@ export class DesktopMailImportFacade implements NativeMailImportFacade {
 		let listeners = this.currentListeners.get(mailboxId)
 		if (listeners != null) {
 			for (const listener of listeners) {
-				const mailImportError: MailImportError = asyncImportErrorToMailImportError(error)
+				const mailImportError = new MailImportError(asyncImportErrorToMailImportError(error))
 				listener(mailImportError)
 			}
 		}
