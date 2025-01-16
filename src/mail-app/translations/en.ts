@@ -1908,6 +1908,7 @@ export default {
 		"inWeek_label": "in weeks {weeks}",
 		"afterStartOfPeriod_label": "{days} occurrence after start of the {period}",
 		"and_label": "and",
-		"beforeEndOfPeriod_label": "{days} occurrence before end of the {period}"
+		"beforeEndOfPeriod_label": "{days} occurrence before end of the {period}",
+		"unsupportedAdvancedRules_msg": "This event contains one or more unsupported Advanced Recurrence Rules, any changes will result in the loss of these rules"
 	}
 }

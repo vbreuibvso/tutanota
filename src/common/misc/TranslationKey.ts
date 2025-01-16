@@ -1891,3 +1891,4 @@ export type TranslationKeyType =
 	| "afterStartOfPeriod_label"
 	| "and_label"
 	| "beforeEndOfPeriod_label"
+	| "unsupportedAdvancedRules_msg"
